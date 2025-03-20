@@ -1,0 +1,434 @@
+-- Importar a Discord Ui Library
+local DiscordLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/bloodball/-back-ups-for-libs/main/discord"))()
+
+-- Criar a janela principal
+local win = DiscordLib:Window("🎯 Dog Menu / ALL GAMES! 🚀")
+
+-- Criar um servidor e canal
+local serv = win:Server("Dog Menu", "Geral")
+local serv3 = win:Server("Painel FE", "Opções Gerais")
+
+
+local channel = serv:Channel("Geral")
+local playerChannel = serv:Channel("Painel Player")
+local GunsChannel = serv:Channel("Armas / Itens")
+local MiscChannel = serv3:Channel("Admin Panel")
+
+
+
+-- Configurações do AimFOV
+local FOV = 200
+local smoothness = 0.1
+local fovColor = Color3.fromRGB(255, 0, 0)
+local fovTransparency = 0.5
+local AimFovEnabled = false
+local ESPEnabled = false
+local aimTarget = "Head"
+
+local player = game.Players.LocalPlayer
+
+-- Configuração do círculo FOV
+local fovCircle = Drawing.new("Circle")
+fovCircle.Radius = FOV
+fovCircle.Color = fovColor
+fovCircle.Thickness = 2
+fovCircle.Transparency = fovTransparency
+fovCircle.Visible = false
+
+local function update_fov_circle()
+    if AimFovEnabled then
+        local screen_size = workspace.CurrentCamera.ViewportSize
+        fovCircle.Position = Vector2.new(screen_size.X / 2, screen_size.Y / 2)
+        fovCircle.Radius = FOV
+    end
+end
+
+local function toggle_fov(bool)
+    AimFovEnabled = bool
+    fovCircle.Visible = bool
+    DiscordLib:Notification("AimFOV", bool and "On!" or "Off!", "OK")
+end
+
+-- Tabela para armazenar ESPs ativos
+local espElements = {}
+
+-- Função para criar ESP (caixa + linha)
+local function createESP(player)
+    if not player or player == game.Players.LocalPlayer then return end
+
+    local espBox = Drawing.new("Square")
+    espBox.Thickness = 1
+    espBox.Filled = false
+    espBox.Visible = false
+    espBox.Color = Color3.fromRGB(255, 0, 0)
+
+    local traceLine = Drawing.new("Line")
+    traceLine.Thickness = 1
+    traceLine.Visible = false
+    traceLine.Color = Color3.fromRGB(255, 255, 0)
+
+    local nameText = Drawing.new("Text")
+    nameText.Size = 15
+    nameText.Color = Color3.fromRGB(255, 255, 255)
+    nameText.Outline = true
+    nameText.Center = true
+    nameText.Visible = false
+
+    -- Atualizar ESP
+    local function updateESP()
+        if not ESPEnabled or not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
+            espBox.Visible = false
+            traceLine.Visible = false
+            nameText.Visible = false
+            return
+        end
+
+        local rootPart = player.Character.HumanoidRootPart
+        local screenPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(rootPart.Position)
+
+        if onScreen then
+            local distance = (workspace.CurrentCamera.CFrame.Position - rootPart.Position).Magnitude
+            local size = math.clamp(500 / distance, 20, 100)
+
+            espBox.Size = Vector2.new(size, size * 1.5)
+            espBox.Position = Vector2.new(screenPos.X - espBox.Size.X / 2, screenPos.Y - espBox.Size.Y / 2)
+            espBox.Visible = true
+
+            nameText.Position = Vector2.new(screenPos.X, screenPos.Y - size / 2 - 15)
+            nameText.Text = player.Name .. " [" .. math.floor(distance) .. "m]"
+            nameText.Visible = true
+
+            -- Atualizar linha (Trace ESP)
+            local localRoot = player.Character.HumanoidRootPart
+            local startPos = workspace.CurrentCamera:WorldToViewportPoint(localRoot.Position)
+            traceLine.From = Vector2.new(startPos.X, startPos.Y)
+            traceLine.To = Vector2.new(screenPos.X, screenPos.Y)
+            traceLine.Visible = true
+        else
+            espBox.Visible = false
+            traceLine.Visible = false
+            nameText.Visible = false
+        end
+    end
+
+    game:GetService("RunService").RenderStepped:Connect(updateESP)
+
+    espElements[player] = {box = espBox, line = traceLine, name = nameText}
+end
+
+
+
+-- Toggle para ativar/desativar o ESP
+local function toggle_esp(bool)
+    ESPEnabled = bool
+    if not ESPEnabled then
+        for _, elements in pairs(espElements) do
+            elements.box.Visible = false
+            elements.line.Visible = false
+            elements.name.Visible = false
+        end
+    else
+        for _, player in ipairs(game.Players:GetPlayers()) do
+            if not espElements[player] then
+                createESP(player)
+            end
+        end
+    end
+    DiscordLib:Notification("ESP", bool and "Enabled!" or "Disabled!", "OK")
+end
+
+-- Adicionar ESP para novos jogadores automaticamente
+game.Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function()
+        if ESPEnabled then
+            createESP(player)
+        end
+    end)
+end)
+
+-- Remover ESP quando o jogador sair do jogo
+game.Players.PlayerRemoving:Connect(function(player)
+    if espElements[player] then
+        espElements[player].box:Remove()
+        espElements[player].line:Remove()
+        espElements[player] = nil
+    end
+end)
+
+
+-------- BOTÕES AIMFOV & ESP -----------
+
+
+channel:Toggle("Turn AimFOV", false, toggle_fov)
+
+channel:Toggle("ESP", false, toggle_esp)
+
+channel:Slider("AimFOV Size", 50, 400, FOV, function(value)
+    FOV = value
+    update_fov_circle()
+end)
+
+channel:Slider("Smoothness", 0, 1, smoothness, function(value)
+    smoothness = value
+end)
+
+channel:Dropdown("Aim Target", {"Head", "Body"}, function(selected)
+    aimTarget = selected
+    DiscordLib:Notification("Aim Target", "Target set to " .. aimTarget, "OK")
+end)
+
+----------- BOTÕES PAINEL PLAYERS ------------
+
+playerChannel:Textbox("Teleport Player", "Nome do jogador", true, function(targetName)
+    local targetPlayer = workspace:FindFirstChild(targetName)
+    if targetPlayer and targetPlayer:FindFirstChild("HumanoidRootPart") then
+        local character = player.Character
+        if character and character:FindFirstChild("HumanoidRootPart") then
+            character.HumanoidRootPart.CFrame = targetPlayer.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
+            DiscordLib:Notification("Teleport", "Teleportado até " .. targetName, "OK")
+        end
+    else
+        DiscordLib:Notification("Erro", "Jogador não encontrado!", "OK")
+    end
+end)
+
+
+
+-- Função para crashar jogadores
+playerChannel:Textbox("Crash Player", "Nome do jogador", true, function(targetName)
+    local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+
+function FlingPlayer(targetName)
+    local TargetPlayer = Players:FindFirstChild(targetName)
+
+    if TargetPlayer and TargetPlayer.Character then
+        local TargetHRP = TargetPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not TargetHRP then return end
+
+        -- Salvando a posição inicial do LocalPlayer
+        local oldPosition = HumanoidRootPart.CFrame
+
+        -- Tornando o personagem mais pesado para empurrar com mais força
+        for _, part in pairs(Character:GetChildren()) do
+            if part:IsA("BasePart") then
+                part.Massless = false
+                part.CustomPhysicalProperties = PhysicalProperties.new(50, 0, 0, 0, 0)
+            end
+        end
+
+        -- Mantendo o LocalPlayer DENTRO do alvo até ele ser lançado
+        local flingSuccess = false
+        local rotationSpeed = 100
+
+        while not flingSuccess do
+            -- Travando o LocalPlayer no alvo
+            HumanoidRootPart.CFrame = TargetHRP.CFrame * CFrame.new(0, 2, 0)
+
+            -- Girando rapidamente para criar impacto físico
+            HumanoidRootPart.CFrame = HumanoidRootPart.CFrame * CFrame.Angles(0, math.rad(rotationSpeed), 0)
+
+            -- Aplicando uma pequena força inicial
+            HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(500, 0, 500)
+
+            -- Pequeno delay para monitorar o movimento do alvo
+            wait(0.05)
+
+            -- Se o alvo se mover rápido, o fling foi bem-sucedido
+            if TargetHRP.Velocity.Magnitude > 50 then
+                flingSuccess = true
+            end
+        end
+
+        -- Aplicando a força final para garantir que o alvo seja jogado
+        HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(2500, 2500, 2500)
+
+        -- Voltando para a posição original depois do fling
+        wait(0.2)
+        HumanoidRootPart.CFrame = oldPosition
+    end
+end
+
+FlingPlayer(targetName)
+
+
+
+
+end)
+
+
+
+
+
+
+-------------- LÓGICA -----------------
+
+
+
+-- MANTENDO A LÓGICA ORIGINAL DO AIMFOV 💯
+local function is_within_fov(target_pos)
+    if not AimFovEnabled then return false end
+
+    local screen_pos, on_screen = workspace.CurrentCamera:WorldToViewportPoint(target_pos)
+    if not on_screen then return false end
+
+    local screen_size = workspace.CurrentCamera.ViewportSize
+    local screen_center = Vector2.new(screen_size.X / 2, screen_size.Y / 2)
+
+    local distance = (Vector2.new(screen_pos.X, screen_pos.Y) - screen_center).Magnitude
+    return distance <= FOV
+end
+
+local function aim_at_target()
+    if not AimFovEnabled then return end
+
+    local camera = workspace.CurrentCamera
+    local local_character = player.Character
+    if not camera or not local_character or not local_character:FindFirstChild("HumanoidRootPart") then return end
+
+    local closest_target = nil
+    local closest_distance = math.huge
+
+    for _, opponent in ipairs(game.Players:GetPlayers()) do
+        if opponent ~= player then
+            local target_part = nil
+            
+            if aimTarget == "Head" then
+                if opponent.Character and opponent.Character:FindFirstChild("Head") then
+                    target_part = opponent.Character.Head.Position
+                elseif workspace:FindFirstChild(opponent.Name) and workspace[opponent.Name]:FindFirstChild("Head") then
+                    target_part = workspace[opponent.Name].Head.Position
+                end
+            elseif aimTarget == "Body" then
+                if opponent.Character and opponent.Character:FindFirstChild("HumanoidRootPart") then
+                    target_part = opponent.Character.HumanoidRootPart.Position
+                elseif workspace:FindFirstChild(opponent.Name) and workspace[opponent.Name]:FindFirstChild("HumanoidRootPart") then
+                    target_part = workspace[opponent.Name].HumanoidRootPart.Position
+                end
+            end
+
+            if target_part and is_within_fov(target_part) then
+                local distance = (target_part - local_character.HumanoidRootPart.Position).Magnitude
+                if distance < closest_distance then
+                    closest_target = target_part
+                    closest_distance = distance
+                end
+            end
+        end
+    end
+
+    if closest_target then
+        local aim_direction = (closest_target - camera.CFrame.Position).unit
+        camera.CFrame = smoothness == 0 and CFrame.new(camera.CFrame.Position, closest_target) or CFrame.new(camera.CFrame.Position, camera.CFrame.Position + camera.CFrame.LookVector:Lerp(aim_direction, smoothness))
+    end
+end
+
+game:GetService("RunService").RenderStepped:Connect(function()
+    update_fov_circle()
+    aim_at_target()
+end)
+
+print("🎉 By Porshe / Premium Script")
+
+
+
+
+
+------------------ ANTI KICK ---------------
+
+
+
+GunsChannel:Button(
+    "Anti Kick - Server",
+    function()
+        DiscordLib:Notification("AntiKick", "Anti Kick ativado! Agora você pode puxar armas!", "Ok")
+        
+
+        local blocked = true
+
+
+-- Interceptar o evento de kick ou destroy
+game:GetService("Players").PlayerRemoving:Connect(function(player)
+    if player == game.Players.LocalPlayer and blocked then
+        -- Bloqueia a remoção do jogador (kick)
+        print("Bloqueando kick do jogador!")
+        return false  -- Impede o kick
+    end
+end)
+
+-- O loop que monitora o estado de blocked
+spawn(function()
+    while true do
+        if blocked then
+            -- Aqui, o código verifica continuamente o estado de blocked
+            print("Antikick em execução...")
+        end
+        wait(0.1)  -- Espera para não sobrecarregar a execução
+    end
+end)
+
+end
+)
+
+
+
+GunsChannel:Seperator()
+
+---------- SEPARADOR ARMAS ---------
+
+
+
+
+GunsChannel:Button(
+    "Puxar AK-12",
+    function()
+        local ARMA = game:GetService("ReplicatedStorage").Tools["AK-12"]:Clone()
+        ARMA.Parent = game:GetService("Players").LocalPlayer.Backpack
+    end
+)
+
+
+
+GunsChannel:Button(
+    "Puxar G17",
+    function()
+        local ARMA = game:GetService("ReplicatedStorage").Tools["G17"]:Clone()
+        ARMA.Parent = game:GetService("Players").LocalPlayer.Backpack
+    end
+)
+
+
+
+GunsChannel:Button(
+    "Puxar Algema",
+    function()
+       local ARMA = game:GetService("Teams")["Pol\195\173cia Militar PMESP"].Handcuffs:Clone()
+        ARMA.Parent = game:GetService("Players").LocalPlayer.Backpack
+    end
+)
+
+
+
+
+GunsChannel:Button(
+    "Puxar M4A1",
+    function()
+        local ARMA = game:GetService("ReplicatedStorage").Tools["M4A1"]:Clone()
+        ARMA.Parent = game:GetService("Players").LocalPlayer.Backpack
+    end
+)
+
+
+
+
+GunsChannel:Button(
+    "Puxar Glock 22",
+    function()
+        local ARMA = game:GetService("ReplicatedStorage").Tools["Glock 22"]:Clone()
+        ARMA.Parent = game:GetService("Players").LocalPlayer.Backpack
+    end
+)
