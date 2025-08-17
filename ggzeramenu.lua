@@ -204,8 +204,8 @@ local function createLogsGui(titleText, storedTable)
     ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
     local Main = Instance.new("Frame")
-    Main.Size = UDim2.new(0, 520, 0, 360)
-    Main.Position = UDim2.new(0.26, 0, 0.26, 0)
+    Main.Size = UDim2.new(0, 600, 0, 400)
+    Main.Position = UDim2.new(0.2, 0, 0.2, 0)
     Main.BackgroundColor3 = Color3.fromRGB(30,30,30)
     Main.BorderSizePixel = 0
     Main.Active = true
@@ -221,6 +221,7 @@ local function createLogsGui(titleText, storedTable)
     Title.Text = "📜 "..titleText
     Title.Parent = Main
 
+    -- Botões de controle
     local Close = Instance.new("TextButton")
     Close.Size = UDim2.new(0, 60, 0, 26)
     Close.Position = UDim2.new(1, -65, 0, 3)
@@ -251,34 +252,68 @@ local function createLogsGui(titleText, storedTable)
     Pause.Text = "⏸️ Pausar"
     Pause.Parent = Main
 
+    -- Campo de pesquisa
+    local SearchBox = Instance.new("TextBox")
+    SearchBox.Size = UDim2.new(0, 250, 0, 26)
+    SearchBox.Position = UDim2.new(0, 120, 0, 3)
+    SearchBox.PlaceholderText = "Pesquisar mensagens..."
+    SearchBox.ClearTextOnFocus = false
+    SearchBox.BackgroundColor3 = Color3.fromRGB(50,50,50)
+    SearchBox.TextColor3 = Color3.new(1,1,1)
+    SearchBox.Font = Enum.Font.SourceSans
+    SearchBox.TextSize = 14
+    SearchBox.Parent = Main
+
+    -- ScrollingFrame com rolagem horizontal e vertical
     local Scrolling = Instance.new("ScrollingFrame")
     Scrolling.Size = UDim2.new(1, -10, 1, -44)
     Scrolling.Position = UDim2.new(0, 5, 0, 38)
     Scrolling.BackgroundTransparency = 1
-    Scrolling.ScrollBarThickness = 6
+    Scrolling.ScrollBarThickness = 8
     Scrolling.CanvasSize = UDim2.new(0,0,0,0)
+    Scrolling.HorizontalScrollBarInset = Enum.ScrollBarInset.ScrollBar
     Scrolling.Parent = Main
+    Scrolling.AutomaticCanvasSize = Enum.AutomaticSize.XY
 
     local UIListLayout = Instance.new("UIListLayout")
     UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    UIListLayout.FillDirection = Enum.FillDirection.Vertical
+    UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
     UIListLayout.Parent = Scrolling
 
     local paused = false
+
+    -- Função para adicionar linha de log
     local function addLine(log)
         if paused then return end
         local line = Instance.new("TextLabel")
         line.BackgroundTransparency = 1
-        line.Size = UDim2.new(1, -6, 0, 20)
+        line.Size = UDim2.new(0, 1, 0, 20) -- ajuste para CanvasSize dinâmico
         line.TextXAlignment = Enum.TextXAlignment.Left
         line.Font = Enum.Font.Code
         line.TextSize = 14
         line.TextColor3 = Color3.new(1,1,1)
         line.Text = string.format("[%s] %s: %s", log.time, log.author, log.message)
+        line.TextWrapped = false
+        line.TextTruncate = Enum.TextTruncate.None
+        line.TextScaled = false
         line.Parent = Scrolling
-        Scrolling.CanvasSize = UDim2.new(0,0,0,UIListLayout.AbsoluteContentSize.Y)
-        Scrolling.CanvasPosition = Vector2.new(0, Scrolling.CanvasSize.Y.Offset)
+        line.Size = UDim2.new(0, math.max(Scrolling.AbsoluteSize.X, #line.Text*8), 0, 20)
+        Scrolling.CanvasSize = UDim2.new(0, math.max(Scrolling.AbsoluteSize.X, #line.Text*8), 0, UIListLayout.AbsoluteContentSize.Y)
     end
 
+    -- Atualiza linhas ao digitar na pesquisa
+    SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+        local query = SearchBox.Text:lower()
+        for _,v in ipairs(Scrolling:GetChildren()) do
+            if v:IsA("TextLabel") then
+                local show = v.Text:lower():find(query)
+                v.Visible = show and true or false
+            end
+        end
+    end)
+
+    -- Adiciona logs já armazenados
     for _,log in ipairs(storedTable) do addLine(log) end
 
     Close.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
