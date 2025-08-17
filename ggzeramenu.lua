@@ -357,7 +357,7 @@ local function openOrCreateAdminPanel()
     icon.Size = UDim2.new(0, 128, 0, 128)
     icon.Position = UDim2.new(0, 10, 0, 10)
     icon.BackgroundTransparency = 1
-    icon.Image = "rbxassetid://965496596"
+    icon.Image = "rbxassetid://987290052"
     icon.AutoButtonColor = true
     icon.Parent = gui
 
