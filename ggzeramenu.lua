@@ -194,6 +194,9 @@ local function startsWithPrefix(text)
     return false
 end
 
+
+---- CREATE LOGS GUI ----
+
 local function createLogsGui(titleText, storedTable)
     local existing = LocalPlayer.PlayerGui:FindFirstChild(titleText)
     if existing then existing.Enabled = true return end
@@ -330,6 +333,8 @@ local function createLogsGui(titleText, storedTable)
     return addLine
 end
 
+
+
 do
     local channel = TextChatService:WaitForChild("TextChannels"):WaitForChild("RBXGeneral")
     channel.MessageReceived:Connect(function(msg)
@@ -391,9 +396,8 @@ local function openOrCreateAdminPanel()
     icon.Name = "AdminIcon"
     icon.Size = UDim2.new(0, 128, 0, 128)
     icon.Position = UDim2.new(0, 10, 0, 10)
-    icon.BackgroundTransparency = 0
-    icon.Image = "rbxassetid://987290052"
-	icon.ImageTransparency = 0
+    icon.BackgroundTransparency = 1
+    icon.Image = "rbxassetid://965496596"
     icon.AutoButtonColor = true
     icon.Parent = gui
 
@@ -2111,6 +2115,60 @@ sections.Section5:AddToggle({
     end
 })
 
+
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local noclipConnection
+local tpLoopConnection
+
+sections.Section5:AddToggle({
+    enabled = true,
+    text = "Loop TP",
+    flag = "LoopTP",
+    tooltip = "Loop TP",
+    risky = false,
+    callback = function(state)
+        if state then
+            -- Ativar noclip
+            noclipConnection = RunService.Stepped:Connect(function()
+                if player.Character and player.Character:FindFirstChild("Humanoid") then
+                    player.Character.Humanoid:ChangeState(11) -- Physics
+                end
+            end)
+
+            -- Ativar loop TP + fly fake
+            tpLoopConnection = RunService.Heartbeat:Connect(function()
+                if selectedPlayer and selectedPlayer.Character and selectedPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    local char = player.Character
+                    if char and char:FindFirstChild("HumanoidRootPart") then
+                        local hrp = char.HumanoidRootPart
+                        hrp.Velocity = Vector3.zero -- zera gravidade
+                        hrp.CFrame = CFrame.new(selectedPlayer.Character.HumanoidRootPart.Position + Vector3.new(0, 5, 0))
+                    end
+                end
+            end)
+
+        else
+            -- Desativar noclip
+            if noclipConnection then
+                noclipConnection:Disconnect()
+                noclipConnection = nil
+            end
+            -- Desativar loop tp
+            if tpLoopConnection then
+                tpLoopConnection:Disconnect()
+                tpLoopConnection = nil
+            end
+
+            -- Restaurar estado normal do player
+            if player.Character and player.Character:FindFirstChild("Humanoid") then
+                player.Character.Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+            end
+        end
+    end
+})
 
 
 
