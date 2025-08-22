@@ -347,38 +347,45 @@ MiscTab:Button{
 }
 
 
-local strikecolor = nil
-MiscTab:ColorPicker{
-    Name = "Flash Color",
-    Style = Mercury.ColorPickerStyles.Legacy, -- Ou Gradient
-    Callback = function(color)
-        strikecolor = color
-    end
-}
-
-
-
-
-
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local UIS = game:GetService("UserInputService")
+local Debris = game:GetService("Debris")
 
+-- Variáveis principais
 local flashActive = false
-local flashConn = nil
-local flashFolder = nil
-local tool = nil
-local playAnim = nil
-local targetSpeed = 600
-local currentSpeed = 16
-local acceleration = 300
+local flashConn
+local flashFolder
+local playAnim
+local attachParts = {}
+local targetSpeed = 600 -- velocidade máxima, controlada pelo slider
+local currentSpeed = 50 -- velocidade atual, controlada por Q/E e boost
 local defaultFOV = Camera.FieldOfView
 local maxFOV = 110
+local strikecolor = Color3.fromRGB(255,0,0)
 
+-- Boost
+local boostActive = false
+local boostDuration = 6.5
+local boostSpeedExtra = 500
+local boostAnimId = "rbxassetid://73220746306116"
+local breakSoundId = "rbxassetid://224339201"
 
+-- Teclas Q/E seguráveis
+local keysHeld = {Q=false, E=false}
+local inputMovement = {W=false, A=false, S=false, D=false}
+
+--== UI ==
+MiscTab:ColorPicker{
+    Name = "Flash Color",
+    Style = Mercury.ColorPickerStyles.Legacy,
+    Callback = function(color)
+        strikecolor = color
+    end
+}
 
 MiscTab:Slider{
     Name = "Flash Speed",
@@ -387,27 +394,48 @@ MiscTab:Slider{
     Max = 10000,
     Callback = function(value)
         targetSpeed = value
+        currentSpeed = math.min(currentSpeed, targetSpeed)
     end
 }
 
--- Slider para controlar Flash Acceleration
-MiscTab:Slider{
-    Name = "Flash Acceleration",
-    Default = acceleration,
-    Min = 1,
-    Max = 10000,
-    Callback = function(value)
-        acceleration = value
+--== Funções ==
+local function smoothFOV(target)
+    TweenService:Create(Camera, TweenInfo.new(0.4, Enum.EasingStyle.Quad), {FieldOfView = target}):Play()
+end
+
+local function createDynamicLightning(basePos, totalLength, segments)
+    local prevPos = basePos
+    for i = 1, segments do
+        local segmentLength = totalLength/segments
+        local offset = Vector3.new(
+            math.random(-segmentLength, segmentLength),
+            math.random(-segmentLength/2, segmentLength/2),
+            math.random(-segmentLength, segmentLength)
+        )
+        local endPos = prevPos - LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * segmentLength + offset
+
+        local part = Instance.new("Part")
+        part.Anchored = true
+        part.CanCollide = false
+        part.Material = Enum.Material.Neon
+        part.Color = strikecolor
+        part.Size = Vector3.new(0.09 + math.random()*0.1, 0.09 + math.random()*0.1, (prevPos - endPos).Magnitude)
+        part.CFrame = CFrame.new((prevPos+endPos)/2, endPos)
+        part.Parent = flashFolder
+
+        local tween = TweenService:Create(part, TweenInfo.new(0.1 + math.random()*0.05, Enum.EasingStyle.Linear), {Transparency = 1})
+        tween:Play()
+        tween.Completed:Connect(function() part:Destroy() end)
+
+        prevPos = endPos
     end
-}
+end
 
-
-
-
+--== TOGGLE FLASH ==
 MiscTab:Toggle{
     Name = "Deus Da Velocidade.",
     StartingState = false,
-    Description = "A criatura mais rápida do mundo.",
+    Description = "Ativa os poderes do Flash.",
     Callback = function(state)
         local char = LocalPlayer.Character
         if not char then return end
@@ -417,153 +445,153 @@ MiscTab:Toggle{
 
         if state then
             flashActive = true
-            flashFolder = Instance.new("Folder")
+            flashFolder = Instance.new("Folder", workspace)
             flashFolder.Name = "FlashEffects"
-            flashFolder.Parent = workspace
 
-            -- Animação Adidas
+            -- Animação de corrida
             local runAnim = Instance.new("Animation")
-            runAnim.AnimationId = "rbxassetid://82598234841035"
+            runAnim.AnimationId = "rbxassetid://91648079587853"
             playAnim = hum:LoadAnimation(runAnim)
-            playAnim.Priority = Enum.AnimationPriority.Action
-            local animPlaying = false
+
+            attachParts = {}
+            for _,p in ipairs({"UpperTorso","Left Arm","Right Arm","Left Leg","Right Leg"}) do
+                local part = char:FindFirstChild(p)
+                if part then table.insert(attachParts, part) end
+            end
 
             local lastPos = hrp.Position
             local distanceTraveled = 0
-            local input = {W=false, A=false, S=false, D=false}
-            local maxLightningLength = 20
-            local maxRays = 6
+            currentSpeed = math.max(16, currentSpeed)
 
-            -- Captura inputs
+            --== Input de movimento ==
             UIS.InputBegan:Connect(function(key, processed)
                 if processed then return end
-                if key.KeyCode == Enum.KeyCode.W then input.W = true end
-                if key.KeyCode == Enum.KeyCode.A then input.A = true end
-                if key.KeyCode == Enum.KeyCode.S then input.S = true end
-                if key.KeyCode == Enum.KeyCode.D then input.D = true end
-            end)
-            UIS.InputEnded:Connect(function(key)
-                if key.KeyCode == Enum.KeyCode.W then input.W = false end
-                if key.KeyCode == Enum.KeyCode.A then input.A = false end
-                if key.KeyCode == Enum.KeyCode.S then input.S = false end
-                if key.KeyCode == Enum.KeyCode.D then input.D = false end
-            end)
+                if inputMovement[key.KeyCode.Name] ~= nil then inputMovement[key.KeyCode.Name] = true end
+                if key.KeyCode == Enum.KeyCode.Q then keysHeld.Q = true end
+                if key.KeyCode == Enum.KeyCode.E then keysHeld.E = true end
 
-            local function createDynamicLightning(basePos, totalLength, segments)
-                local prevPos = basePos
-                for i = 1, segments do
-                    local segmentLength = totalLength/segments
-                    local offset = Vector3.new(
-                        math.random(-segmentLength, segmentLength),
-                        math.random(-segmentLength/2, segmentLength/2),
-                        math.random(-segmentLength, segmentLength)
-                    )
-                    local endPos = prevPos - hrp.CFrame.LookVector * segmentLength + offset
+                --== Boost ==
+                if key.KeyCode == Enum.KeyCode.LeftShift and not boostActive and flashActive then
+                    boostActive = true
 
-                    local part = Instance.new("Part")
-                    part.Anchored = true
-                    part.CanCollide = false
-                    part.Material = Enum.Material.Neon
-                    part.BrickColor = BrickColor.new(strikecolor)
-                    part.Size = Vector3.new(
-                        0.09 + math.random()*0.1,
-                        0.09 + math.random()*0.1,
-                        (prevPos - endPos).Magnitude
-                    )
-                    part.CFrame = CFrame.new((prevPos+endPos)/2, endPos)
-                    part.Parent = flashFolder
+                    -- Congelar player
+                    hum.WalkSpeed = 0
+                    hrp.AssemblyLinearVelocity = Vector3.new(0,0,0)
 
-                    local tween = TweenService:Create(part, TweenInfo.new(0.1 + math.random()*0.05, Enum.EasingStyle.Linear), {Transparency = 1})
-                    tween:Play()
-                    tween.Completed:Connect(function() part:Destroy() end)
+                    -- Bloquear input temporariamente
+                    local prevInput = {}
+                    for k,v in pairs(inputMovement) do prevInput[k] = v; inputMovement[k] = false end
 
-                    prevPos = endPos
+                    -- Animação de preparação
+                    local boostAnim = Instance.new("Animation")
+                    boostAnim.AnimationId = boostAnimId
+                    local boostTrack = hum:LoadAnimation(boostAnim)
+                    boostTrack:Play()
+
+                    spawn(function()
+                        wait(boostDuration)
+                        boostTrack:Stop()
+
+                        -- Velocidade atual recebe target + extra
+                        currentSpeed = targetSpeed + boostSpeedExtra
+                        hum.WalkSpeed = currentSpeed
+
+                        -- Som da barreira do som
+                        local sound = Instance.new("Sound", hrp)
+                        sound.SoundId = breakSoundId
+                        sound.Volume = 1
+                        sound:Play()
+                        Debris:AddItem(sound, 5)
+
+                        -- Reativar input
+                        for k,v in pairs(prevInput) do inputMovement[k] = v end
+                        boostActive = false
+                    end)
                 end
+            end)
+
+            UIS.InputEnded:Connect(function(key, processed)
+                if inputMovement[key.KeyCode.Name] ~= nil then inputMovement[key.KeyCode.Name] = false end
+                if key.KeyCode == Enum.KeyCode.Q then keysHeld.Q = false end
+                if key.KeyCode == Enum.KeyCode.E then keysHeld.E = false end
+            end)
+
+            --== Tool Phase ==
+            local toolPhase = Instance.new("Tool", LocalPlayer.Backpack)
+            toolPhase.Name = "Phase"
+            toolPhase.RequiresHandle = false
+            local phaseAnim
+            local phaseActive = false
+
+            local function startPhase()
+                if phaseAnim and phaseAnim.IsPlaying then return end
+                local anim = Instance.new("Animation")
+                anim.AnimationId = "rbxassetid://82363856064263"
+                phaseAnim = hum:LoadAnimation(anim)
+                phaseAnim:Play()
+                phaseActive = true
             end
 
-            -- RenderStepped: movimento, raios, animação, FOV
-            flashConn = RunService.RenderStepped:Connect(function(dt)
-                -- Aceleração gradual independente da tecla W
-                if input.W or input.A or input.S or input.D then
-                    currentSpeed = math.min(currentSpeed + acceleration*dt, targetSpeed)
-                else
-                    currentSpeed = math.max(currentSpeed - acceleration*dt*2, 0)
+            local function stopPhase()
+                if phaseAnim and phaseAnim.IsPlaying then phaseAnim:Stop() end
+                phaseActive = false
+            end
+
+            toolPhase.Equipped:Connect(startPhase)
+            toolPhase.Unequipped:Connect(stopPhase)
+
+            UIS.InputBegan:Connect(function(key, processed)
+                if key.KeyCode == Enum.KeyCode.T then
+                    if phaseActive then stopPhase() else startPhase() end
                 end
-                hum.WalkSpeed = currentSpeed
-                Camera.FieldOfView = defaultFOV + (currentSpeed/targetSpeed)*(maxFOV - defaultFOV)
+            end)
 
-                -- Só animação e raios se estiver pressionando W
-                if input.W or input.A or input.S or input.D then
-                    -- Animação
-                    if currentSpeed > 0.1 then
-                        if not animPlaying then
-                            playAnim:Play()
-                            animPlaying = true
-                        end
-                    else
-                        if animPlaying then
-                            playAnim:Stop()
-                            animPlaying = false
-                        end
-                    end
+            --== Loop principal ==
+            flashConn = RunService.RenderStepped:Connect(function(dt)
+                -- Ajuste de currentSpeed via Q/E com limite mínimo de 16
+                if keysHeld.Q then currentSpeed = math.max(16, currentSpeed - 400*dt) end
+                if keysHeld.E then currentSpeed = math.min(targetSpeed, currentSpeed + 400*dt) end
 
-                    -- Raios
+                if boostActive then
+                    hum.WalkSpeed = 0
+                    hrp.AssemblyLinearVelocity = Vector3.new(0,0,0)
+                    smoothFOV(defaultFOV)
+                    if playAnim.IsPlaying then playAnim:Stop() end
+                    return
+                end
+
+                -- Movimento
+                if inputMovement.W or inputMovement.A or inputMovement.S or inputMovement.D then
+                    hum.WalkSpeed = currentSpeed
+                    smoothFOV(maxFOV)
+                    if not playAnim.IsPlaying then playAnim:Play() end
+
                     local delta = (hrp.Position - lastPos).Magnitude
                     distanceTraveled = distanceTraveled + delta
                     if delta > 0.2 then
-                        local numRays = math.clamp(math.floor(currentSpeed/100), 1, maxRays)
-                        local lightningLength = math.clamp(distanceTraveled, 5, maxLightningLength)
+                        local numRays = math.clamp(math.floor(currentSpeed/100), 1, 4)
+                        local lightningLength = math.clamp(distanceTraveled, 5, 20)
                         for r = 1, numRays do
                             createDynamicLightning(hrp.Position + hrp.CFrame.LookVector*2, lightningLength, math.random(4,8))
                         end
                     end
                     lastPos = hrp.Position
-                    if currentSpeed < 1 then distanceTraveled = 0 end
                 else
-                    -- Se W não estiver pressionado, para animação
-                    if animPlaying then
-                        playAnim:Stop()
-                        animPlaying = false
-                    end
+                    hum.WalkSpeed = 16
+                    local vel = hrp.AssemblyLinearVelocity
+                    hrp.AssemblyLinearVelocity = Vector3.new(0, vel.Y, 0)
+                    smoothFOV(defaultFOV)
+                    if playAnim.IsPlaying then playAnim:Stop() end
                 end
             end)
 
-            -- TP Tool
-            tool = Instance.new("Tool")
-            tool.Name = "Força De Aceleração"
-            tool.RequiresHandle = false
-            tool.CanBeDropped = false
-            tool.Parent = LocalPlayer.Backpack
-
-            tool.Activated:Connect(function()
-                local mouse = LocalPlayer:GetMouse()
-                local target = mouse.Hit.Position
-                local tween = TweenService:Create(hrp, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {CFrame = CFrame.new(target + Vector3.new(0,5,0))})
-                tween:Play()
-
-                local part = Instance.new("Part")
-                part.Size = Vector3.new(2,2,2)
-                part.Anchored = true
-                part.CanCollide = false
-                part.Material = Enum.Material.Neon
-                part.BrickColor = BrickColor.new(strikecolor)
-                part.CFrame = hrp.CFrame
-                part.Parent = workspace
-                game.Debris:AddItem(part,0.2)
-            end)
-
-            GUI:Notification{
-                Title = "Flash",
-                Text = "Você agora corre como o Flash! TP Tool adicionada.",
-                Duration = 4
-            }
         else
+            -- Desativar Flash
             flashActive = false
             hum.WalkSpeed = 16
-            Camera.FieldOfView = defaultFOV
+            smoothFOV(defaultFOV)
             if flashConn then flashConn:Disconnect() end
             if flashFolder then flashFolder:Destroy() end
-            if tool and tool.Parent then tool:Destroy() end
             if playAnim and playAnim.IsPlaying then playAnim:Stop() end
         end
     end
@@ -573,40 +601,16 @@ MiscTab:Toggle{
 
 
 
-local phaseActive = false
-local phaseConn = nil
 
-MiscTab:Toggle{
-    Name = "Phase Flash",
-    StartingState = false,
-    Description = "Tremor lateral rápido com sombra, sem travar movimento.",
-    Callback = function(state)
-        local char = LocalPlayer.Character
-        if not char then return end
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if not hrp then return end
 
-        if state then
-            phaseActive = true
-            local t = 0
 
-            phaseConn = RunService.RenderStepped:Connect(function(dt)
-                t = t + dt * 300 -- frequência bem alta para efeito de sombra
-                local offsetX = math.sin(t) * 0.3
-                local offsetZ = math.cos(t*1.5) * 0.3
 
-                -- Aplica offsets relativos ao CFrame atual, não bloqueando movimentos
-                hrp.CFrame = hrp.CFrame * CFrame.new(offsetX, 0, offsetZ)
-            end)
-        else
-            phaseActive = false
-            if phaseConn then
-                phaseConn:Disconnect()
-                phaseConn = nil
-            end
-        end
-    end
-}
+
+
+
+
+
+
 
 
 
