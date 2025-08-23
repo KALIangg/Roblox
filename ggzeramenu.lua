@@ -403,7 +403,7 @@ local function openOrCreateAdminPanel()
     icon.Parent = gui
 
 	local iconcorner = Instance.new("UICorner")
-	iconcorner.CornerRadius = (0.300000012, 8)
+	iconcorner.CornerRadius = UDim.new(0.3, 8)
 
     local win = Instance.new("Frame")
     win.Name = "Window"
