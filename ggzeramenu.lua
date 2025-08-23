@@ -591,6 +591,12 @@ RegisterCommand("tp", function(target)
         LocalPlayer.Character:PivotTo(t.Character.HumanoidRootPart.CFrame)
     end
 end, {desc="Teleporta até o player alvo", usage="tp <player>"})
+RegisterAlias("goto","tp")
+RegisterAlias("to","tp")
+
+
+
+
 
 RegisterCommand("goto", function(target)
     local t = FindPlayerByPartial(target)
@@ -600,12 +606,20 @@ RegisterCommand("goto", function(target)
 end, {desc="Vai até o player alvo", usage="goto <player>"})
 RegisterAlias("to","goto")
 
+
+
+
+
 RegisterCommand("bring", function(target)
     local t = FindPlayerByPartial(target)
     if t and t.Character and t.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character then
         t.Character:PivotTo(LocalPlayer.Character.HumanoidRootPart.CFrame + Vector3.new(0,3,0))
     end
 end, {desc="Traz o player alvo até você", usage="bring <player>"})
+RegisterAlias("puxar","bring")
+
+
+
 
 RegisterCommand("rejoin", function()
     local placeId, jobId = game.PlaceId, game.JobId
@@ -613,6 +627,10 @@ RegisterCommand("rejoin", function()
         TeleportService:TeleportToPlaceInstance(placeId, jobId, LocalPlayer)
     end
 end, {desc="Reentrar no mesmo servidor"})
+RegisterAlias("rj","rejoin")
+
+
+
 
 RegisterCommand("pt", function()
     local tool = Instance.new("Tool")
@@ -629,6 +647,9 @@ RegisterCommand("pt", function()
     end)
     tool.Parent = LocalPlayer.Backpack
 end, {desc="Cria ferramenta de teleport por clique"})
+RegisterAlias("tptool","pt")
+
+
 
 RegisterCommand("unpt", function()
     local bp = LocalPlayer:FindFirstChild("Backpack")
@@ -636,6 +657,10 @@ RegisterCommand("unpt", function()
     if bp and bp:FindFirstChild("TP Tool") then bp["TP Tool"]:Destroy() end
     if ch and ch:FindFirstChild("TP Tool") then ch["TP Tool"]:Destroy() end
 end, {desc="Remove a TP Tool"})
+RegisterAlias("untptool","unpt")
+
+
+
 
 RegisterCommand("puxartudo", function()
     for _, v in pairs(game.ReplicatedStorage:GetDescendants()) do
@@ -645,6 +670,11 @@ RegisterCommand("puxartudo", function()
         if g:IsA("Tool") then g.Parent = LocalPlayer.Backpack end
     end
 end, {desc="Puxa todas as Tools de ReplicatedStorage/Teams"})
+RegisterAlias("giveall","puxartudo")
+
+
+
+
 
 -- ==== PROFILE (expandido estilo Adonis) ====
 RegisterCommand("profile", function(target)
@@ -691,15 +721,26 @@ RegisterCommand("profile", function(target)
 end, {desc="Inspeciona um jogador (detalhes completos)", usage="profile <player>"})
 RegisterAlias("inspect","profile")
 
+
+
+
 RegisterCommand("who", function()
     local names = {}
     for _,p in ipairs(Players:GetPlayers()) do table.insert(names, p.Name) end
     print("Players ("..#names.."):", table.concat(names, ", "))
 end, {desc="Lista jogadores online"})
+RegisterAlias("players","who")
 
-RegisterCommand("server", function()
+
+
+RegisterCommand("serverinfo", function()
     print(("PlaceId: %d | JobId: %s | Players: %d"):format(game.PlaceId, game.JobId, #Players:GetPlayers()))
 end, {desc="Info do servidor atual"})
+RegisterAlias("sinfo","serverinfo")
+
+
+
+
 
 RegisterCommand("seatbreak", function()
     local ch = LocalPlayer.Character
@@ -712,35 +753,47 @@ RegisterCommand("seatbreak", function()
 end, {desc="Destrói o modelo do assento atual (invis improvisado)"} )
 RegisterAlias("invis","seatbreak")
 
--- ==== Outros Comandos Úteis ====
+
+
 RegisterCommand("speed", function(val)
     val = tonumber(val)
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") and val then
         LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = val
     end
 end, {desc="Define a velocidade do player", usage="speed <número>"})
+RegisterAlias("velocity","speed")
 
-RegisterCommand("jump", function(val)
+
+
+RegisterCommand("jumppower", function(val)
     val = tonumber(val)
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") and val then
         LocalPlayer.Character:FindFirstChildOfClass("Humanoid").JumpPower = val
     end
 end, {desc="Define a altura do pulo", usage="jump <número>"})
+RegisterAlias("jumpheight","jumppower")
+
+
 
 RegisterCommand("sit", function()
     local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
     if hum then hum.Sit = true end
 end, {desc="Faz seu personagem sentar"})
 
+
 RegisterCommand("reset", function()
     local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
     if hum then hum.Health = 0 end
 end, {desc="Reseta seu personagem"})
+RegisterAlias("re","reset")
+RegisterAlias("respawn","reset")
+
 
 RegisterCommand("heal", function(target)
     local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
     if hum then hum.Health = hum.MaxHealth end
 end, {desc="Cura seu personagem"})
+
 
 RegisterCommand("noclip", function()
     local char = LocalPlayer.Character
@@ -749,14 +802,16 @@ RegisterCommand("noclip", function()
         if v:IsA("BasePart") then v.CanCollide = false end
     end
 end, {desc="Ativa noclip temporário"})
+RegisterAlias("phase","noclip")
 
-RegisterCommand("clip", function()
+RegisterCommand("unnoclip", function()
     local char = LocalPlayer.Character
     if not char then return end
     for _,v in ipairs(char:GetDescendants()) do
         if v:IsA("BasePart") then v.CanCollide = true end
     end
 end, {desc="Desativa noclip"})
+RegisterAlias("clip","unnoclip")
 
 
 RegisterCommand("cmds", function()
@@ -771,6 +826,13 @@ RegisterCommand("aliases", function()
     print("📜 Aliases:")
     for a,_ in pairs(Aliases) do print(Prefix..a) end
 end, {desc="Lista aliases"})
+RegisterAlias("alias","aliases")
+
+
+
+RegisterCommand("prefix", function(arg)
+    Prefix = arg
+end, {desc="Prefixo utilizado nos comandos", usage="prefix <prefix>"})
 
 -- ===== Admin Toggle (UI icon lifecycle) =====
 sections.Section3:AddToggle({
