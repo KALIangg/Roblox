@@ -394,13 +394,16 @@ local function openOrCreateAdminPanel()
 
     local icon = Instance.new("ImageButton")
     icon.Name = "AdminIcon"
-    icon.Size = UDim2.new(0, 128, 0, 128)
+    icon.Size = UDim2.new(0, 50, 0, 50)
     icon.Position = UDim2.new(0, 10, 0, 10)
     icon.BackgroundTransparency = 0
     icon.Image = "rbxassetid://987290052"
 	icon.ImageTransparency = 0
     icon.AutoButtonColor = true
     icon.Parent = gui
+
+	local iconcorner = Instance.new("UICorner")
+	iconcorner.CornerRadius = (0.300000012, 8)
 
     local win = Instance.new("Frame")
     win.Name = "Window"
