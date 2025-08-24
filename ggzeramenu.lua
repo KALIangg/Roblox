@@ -2000,7 +2000,7 @@ local function startBang(mode, targetName)
 
 	-- 🎥 Animação
 	bangAnim = Instance.new("Animation")
-	bangAnim.AnimationId = r15(speaker) and "rbxassetid://104826288857844" or "rbxassetid://148840371"
+	bangAnim.AnimationId = r15(speaker) and "rbxassetid://109852651193458" or "rbxassetid://148840371"
 	bang = humanoid:LoadAnimation(bangAnim)
 	bang:Play(0.1, 1, 1)
 	bang:AdjustSpeed(3)
