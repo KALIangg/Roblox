@@ -431,7 +431,87 @@ local function createDynamicLightning(basePos, totalLength, segments)
     end
 end
 
---== TOGGLE FLASH ==
+
+
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+local noclipConnection -- conexão para o loop
+local noclipEnabled = false
+
+-- Função para ativar noclip
+function noclip()
+    if noclipEnabled then return end
+    noclipEnabled = true
+    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local humanoid = character:WaitForChild("Humanoid")
+
+    noclipConnection = RunService.Stepped:Connect(function()
+        if character and character:FindFirstChild("HumanoidRootPart") then
+            for _, part in pairs(character:GetDescendants()) do
+                if part:IsA("BasePart") and part.CanCollide == true then
+                    part.CanCollide = false
+                end
+            end
+        end
+    end)
+    print("🚀 Noclip ativado")
+end
+
+-- Função para desativar noclip
+function clip()
+    if not noclipEnabled then return end
+    noclipEnabled = false
+    if noclipConnection then
+        noclipConnection:Disconnect()
+        noclipConnection = nil
+    end
+
+    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    if character then
+        for _, part in pairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+    end
+    print("🛑 Noclip desativado")
+end
+
+
+
+
+
+
+-- Função para remover animações padrão (noanim)
+local function disableDefaultAnimations(char)
+    local animate = char:FindFirstChild("Animate")
+    if animate then
+        animate.Disabled = true
+        animate:Destroy()
+    end
+    -- também para tracks ativos
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if hum then
+        for _, track in ipairs(hum:GetPlayingAnimationTracks()) do
+            track:Stop()
+        end
+    end
+end
+
+-- Função para restaurar animações padrão
+local function restoreDefaultAnimations(char)
+    if not char:FindFirstChild("Animate") then
+        local newAnimate = Instance.new("LocalScript")
+        newAnimate.Name = "Animate"
+        newAnimate.Source = game:GetService("StarterPlayer").StarterCharacterScripts.Animate.Source
+        newAnimate.Parent = char
+    end
+end
+
+--== TOGGLE FLASH == 
 MiscTab:Toggle{
     Name = "Deus Da Velocidade.",
     StartingState = false,
@@ -448,10 +528,21 @@ MiscTab:Toggle{
             flashFolder = Instance.new("Folder", workspace)
             flashFolder.Name = "FlashEffects"
 
-            -- Animação de corrida
+            -- Remove as animações padrões (noanim)
+            disableDefaultAnimations(char)
+
+            -- Idle Hero Animation
+            local idleAnim = Instance.new("Animation")
+            idleAnim.AnimationId = "rbxassetid://138175474" -- idle herói
+            local idleTrack = hum:LoadAnimation(idleAnim)
+            idleTrack.Priority = Enum.AnimationPriority.Idle
+            idleTrack:Play()
+
+            -- Run Flash Animation
             local runAnim = Instance.new("Animation")
             runAnim.AnimationId = "rbxassetid://91648079587853"
             playAnim = hum:LoadAnimation(runAnim)
+            playAnim.Priority = Enum.AnimationPriority.Movement
 
             attachParts = {}
             for _,p in ipairs({"UpperTorso","Left Arm","Right Arm","Left Leg","Right Leg"}) do
@@ -530,11 +621,13 @@ MiscTab:Toggle{
                 phaseAnim = hum:LoadAnimation(anim)
                 phaseAnim:Play()
                 phaseActive = true
+                noclip()
             end
 
             local function stopPhase()
                 if phaseAnim and phaseAnim.IsPlaying then phaseAnim:Stop() end
                 phaseActive = false
+                clip()
             end
 
             toolPhase.Equipped:Connect(startPhase)
@@ -542,7 +635,11 @@ MiscTab:Toggle{
 
             UIS.InputBegan:Connect(function(key, processed)
                 if key.KeyCode == Enum.KeyCode.T then
-                    if phaseActive then stopPhase() else startPhase() end
+                    if phaseActive then
+                        stopPhase()
+                    else 
+                        startPhase()
+                    end
                 end
             end)
 
@@ -593,6 +690,9 @@ MiscTab:Toggle{
             if flashConn then flashConn:Disconnect() end
             if flashFolder then flashFolder:Destroy() end
             if playAnim and playAnim.IsPlaying then playAnim:Stop() end
+
+            -- Restaura animações normais
+            restoreDefaultAnimations(char)
         end
     end
 }
