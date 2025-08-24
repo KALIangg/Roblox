@@ -2556,6 +2556,60 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
+
+local mouse = LocalPlayer:GetMouse()
+local clickFlingConnection
+local clickFlingEnabled = false
+
+-- Função principal
+function setClickFlingState(state)
+    if state and not clickFlingEnabled then
+        clickFlingEnabled = true
+        clickFlingConnection = mouse.Button1Down:Connect(function()
+            local target = mouse.Target
+            if target and target.Parent then
+                local targetHum = target.Parent:FindFirstChildOfClass("Humanoid")
+                local targetHRP = target.Parent:FindFirstChild("HumanoidRootPart")
+                if targetHum and targetHRP then
+                    -- Fling básico: aplica força absurda no HRP do alvo
+                    local bv = Instance.new("BodyVelocity")
+                    bv.Velocity = Vector3.new(9999, 9999, 9999) -- direção/força do fling
+                    bv.MaxForce = Vector3.new(1e9, 1e9, 1e9)
+                    bv.P = 1e9
+                    bv.Parent = targetHRP
+
+                    game:GetService("Debris"):AddItem(bv, 0.1) -- remove depois de 0.1s
+                end
+            end
+        end)
+        print("⚡ ClickFling ON")
+    else
+        clickFlingEnabled = false
+        if clickFlingConnection then
+            clickFlingConnection:Disconnect()
+            clickFlingConnection = nil
+        end
+        print("🛑 ClickFling OFF")
+    end
+end
+
+-- Toggle do UI
+sections.Section3:AddToggle({
+    enabled = false,
+    text = "ClickFling",
+    flag = "ClickFling",
+    tooltip = "Flingar players clicando",
+    risky = true,
+    callback = function(state)
+        setClickFlingState(state)
+    end
+})
+
+
+
 
 
 
