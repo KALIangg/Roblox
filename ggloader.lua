@@ -372,7 +372,7 @@ local boostActive = false
 local boostDuration = 6.5
 local boostSpeedExtra = 500
 local boostAnimId = "rbxassetid://73220746306116"
-local breakSoundId = "rbxassetid://224339201"
+local breakSoundId = "rbxassetid://18950094486"
 
 -- Teclas Q/E seguráveis
 local keysHeld = {Q=false, E=false}
@@ -485,33 +485,7 @@ end
 
 
 
--- Função para remover animações padrão (noanim)
-local function disableDefaultAnimations(char)
-    local animate = char:FindFirstChild("Animate")
-    if animate then
-        animate.Disabled = true
-        animate:Destroy()
-    end
-    -- também para tracks ativos
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if hum then
-        for _, track in ipairs(hum:GetPlayingAnimationTracks()) do
-            track:Stop()
-        end
-    end
-end
-
--- Função para restaurar animações padrão
-local function restoreDefaultAnimations(char)
-    if not char:FindFirstChild("Animate") then
-        local newAnimate = Instance.new("LocalScript")
-        newAnimate.Name = "Animate"
-        newAnimate.Source = game:GetService("StarterPlayer").StarterCharacterScripts.Animate.Source
-        newAnimate.Parent = char
-    end
-end
-
---== TOGGLE FLASH == 
+--== TOGGLE FLASH ==
 MiscTab:Toggle{
     Name = "Deus Da Velocidade.",
     StartingState = false,
@@ -528,21 +502,10 @@ MiscTab:Toggle{
             flashFolder = Instance.new("Folder", workspace)
             flashFolder.Name = "FlashEffects"
 
-            -- Remove as animações padrões (noanim)
-            disableDefaultAnimations(char)
-
-            -- Idle Hero Animation
-            local idleAnim = Instance.new("Animation")
-            idleAnim.AnimationId = "rbxassetid://138175474" -- idle herói
-            local idleTrack = hum:LoadAnimation(idleAnim)
-            idleTrack.Priority = Enum.AnimationPriority.Idle
-            idleTrack:Play()
-
-            -- Run Flash Animation
+            -- Animação de corrida
             local runAnim = Instance.new("Animation")
             runAnim.AnimationId = "rbxassetid://91648079587853"
             playAnim = hum:LoadAnimation(runAnim)
-            playAnim.Priority = Enum.AnimationPriority.Movement
 
             attachParts = {}
             for _,p in ipairs({"UpperTorso","Left Arm","Right Arm","Left Leg","Right Leg"}) do
@@ -690,9 +653,6 @@ MiscTab:Toggle{
             if flashConn then flashConn:Disconnect() end
             if flashFolder then flashFolder:Destroy() end
             if playAnim and playAnim.IsPlaying then playAnim:Stop() end
-
-            -- Restaura animações normais
-            restoreDefaultAnimations(char)
         end
     end
 }
