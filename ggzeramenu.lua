@@ -8,6 +8,171 @@ getgenv().luaguardvars = {
 	DiscordName = "username#0000",
 }
 
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+
+local flingActive = false
+local oldPos = nil
+local antiCollideConn
+
+local function stabilizeCharacter(Character, RootPart, Humanoid)
+    RootPart.CFrame = oldPos * CFrame.new(0, .5, 0)
+    Character:SetPrimaryPartCFrame(oldPos * CFrame.new(0, .5, 0))
+    Humanoid:ChangeState("GettingUp")
+
+    for _, bp in pairs(Character:GetChildren()) do
+        if bp:IsA("BasePart") then
+            bp.Velocity = Vector3.new()
+            bp.RotVelocity = Vector3.new()
+        end
+    end
+end
+
+local function antiAntiCollide(Character)
+    local conn
+    conn = RunService.Heartbeat:Connect(function()
+        if not Character or not Character.Parent then
+            conn:Disconnect()
+            return
+        end
+        for _, part in pairs(Character:GetChildren()) do
+            if part:IsA("BasePart") and not part.Anchored then
+                if part.CanCollide == false then
+                    part.CanCollide = true
+                end
+            end
+        end
+    end)
+    return conn
+end
+
+local function SkidFling(TargetPlayer)
+    if typeof(TargetPlayer) ~= "Instance" or not TargetPlayer:IsA("Player") then
+        return print("Fling: Jogador inválido")
+    end
+
+    local tries = 0
+    while not TargetPlayer.Character and tries < 50 do
+        task.wait(0.1)
+        tries += 1
+    end
+
+    local TCharacter = TargetPlayer.Character
+    if not TCharacter then
+        return print("Fling: Personagem do alvo não carregado")
+    end
+
+    local Player = Players.LocalPlayer
+    local Character = Player.Character
+    if not Character or not Character:FindFirstChild("HumanoidRootPart") then
+        return print("Fling: Seu personagem não está pronto")
+    end
+
+    local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+    local RootPart = Character:FindFirstChild("HumanoidRootPart")
+
+    local THumanoid = TCharacter:FindFirstChildOfClass("Humanoid")
+    local TRootPart = TCharacter:FindFirstChild("HumanoidRootPart")
+    local THead = TCharacter:FindFirstChild("Head")
+    local Accessory = TCharacter:FindFirstChildOfClass("Accessory")
+    local Handle = Accessory and Accessory:FindFirstChild("Handle")
+
+    if not RootPart then return end
+
+    -- Salva posição inicial antes do fling
+    oldPos = RootPart.CFrame
+
+    -- Liga o anti-anti-collide no personagem local
+    antiCollideConn = antiAntiCollide(Character)
+
+    -- Ativa colisão temporária em partes próximas do alvo
+    if THumanoid and THumanoid.Sit and TRootPart then
+        local originalStates = {}
+        for _, descendant in ipairs(workspace:GetDescendants()) do
+            if descendant:IsA("BasePart") or (descendant:IsA("Model") and descendant.PrimaryPart) then
+                local part = descendant:IsA("Model") and descendant.PrimaryPart or descendant
+                if (part.Position - TRootPart.Position).Magnitude <= 10 then
+                    originalStates[part] = part.CanCollide
+                    part.CanCollide = true
+                end
+            end
+        end
+        task.delay(5, function()
+            for part, state in pairs(originalStates) do
+                if part and part:IsA("BasePart") then
+                    part.CanCollide = state
+                end
+            end
+        end)
+    end
+
+    workspace.CurrentCamera.CameraSubject = THead or Handle or THumanoid or RootPart
+
+    local function FPos(BasePart, Pos, Ang)
+        local multiplier = 35
+        RootPart.CFrame = CFrame.new(BasePart.Position) * Pos * Ang
+        Character:SetPrimaryPartCFrame(CFrame.new(BasePart.Position) * Pos * Ang)
+        RootPart.Velocity = Vector3.new(1e9, 1.2e9, 1e9) * multiplier
+        RootPart.RotVelocity = Vector3.new(6e8, 6e8, 6e8) * multiplier
+    end
+
+    local function SFBasePart(BasePart)
+        local Angle = 0
+        flingActive = true
+        while flingActive and RootPart and BasePart and TargetPlayer.Character == TCharacter and THumanoid and Humanoid and Humanoid.Health > 0 do
+            Angle += 150
+            local vel = BasePart.Velocity.Magnitude * 1.5
+
+            FPos(BasePart, CFrame.new(0, 2.5, 0) + THumanoid.MoveDirection * vel / 0.8, CFrame.Angles(math.rad(Angle), 0, 0))
+            task.wait()
+
+            FPos(BasePart, CFrame.new(0, -2.5, 0) + THumanoid.MoveDirection * vel / 0.8, CFrame.Angles(math.rad(Angle), 0, 0))
+            task.wait()
+        end
+    end
+
+    workspace.FallenPartsDestroyHeight = 0/0
+
+    local BV = Instance.new("BodyVelocity")
+    BV.Name = "EpixVel"
+    BV.Velocity = Vector3.new(6e9, 6e9, 6e9)
+    BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+    BV.P = 1e6
+    BV.Parent = RootPart
+
+    Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+
+    if TRootPart and THead then
+        if (TRootPart.Position - THead.Position).Magnitude > 5 then
+            SFBasePart(THead)
+        else
+            SFBasePart(TRootPart)
+        end
+    elseif TRootPart then
+        SFBasePart(TRootPart)
+    elseif THead then
+        SFBasePart(THead)
+    elseif Handle then
+        SFBasePart(Handle)
+    end
+
+    BV:Destroy()
+    Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+
+    -- Volta pra posição inicial no final
+    if oldPos then
+        stabilizeCharacter(Character, RootPart, Humanoid)
+    end
+
+    workspace.CurrentCamera.CameraSubject = Humanoid
+
+    if antiCollideConn then
+        antiCollideConn:Disconnect()
+        antiCollideConn = nil
+    end
+end
+
+
 local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/drillygzzly/Other/main/1"))()
 -- local library = loadstring(game:HttpGet("https://pastefy.app/lvQzrmkq/raw"))()
 library:init() -- Initalizes Library Do Not Delete This
@@ -18,7 +183,7 @@ local RunService = game:GetService("RunService")
 local TextChatService = game:GetService("TextChatService")
 local cam = workspace.CurrentCamera
 
-local function sendMessage(msg)
+local function GGZERAMSG(msg)
 	local channel = TextChatService:WaitForChild("TextChannels"):FindFirstChild("RBXGeneral")
 	if channel then
 		channel:SendAsync(msg)
@@ -392,64 +557,69 @@ local function openOrCreateAdminPanel()
     gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
+    -- Icon
     local icon = Instance.new("ImageButton")
     icon.Name = "AdminIcon"
     icon.Size = UDim2.new(0, 50, 0, 50)
     icon.Position = UDim2.new(0, 10, 0, 10)
     icon.BackgroundTransparency = 0
     icon.Image = "rbxassetid://987290052"
-	icon.ImageTransparency = 0
+    icon.ImageTransparency = 0
     icon.AutoButtonColor = true
     icon.Parent = gui
 
-	local iconcorner = Instance.new("UICorner")
-	iconcorner.CornerRadius = UDim.new(0.3, 8)
-	iconcorner.Parent = icon
+    local iconcorner = Instance.new("UICorner")
+    iconcorner.CornerRadius = UDim.new(0.3, 8)
+    iconcorner.Parent = icon
 
+    -- Window
     local win = Instance.new("Frame")
     win.Name = "Window"
     win.Size = UDim2.new(0, 560, 0, 360)
     win.Position = UDim2.new(0.5, -280, 0.5, -180)
-    win.BackgroundColor3 = Color3.fromRGB(25,25,25)
+    win.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
     win.BorderSizePixel = 0
     win.Visible = false
     win.Active = true
     win.Draggable = true
     win.Parent = gui
 
+    -- Header
     local header = Instance.new("TextLabel")
     header.Size = UDim2.new(1, -36, 0, 32)
     header.Position = UDim2.new(0, 0, 0, 0)
-    header.BackgroundColor3 = Color3.fromRGB(40,40,40)
+    header.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     header.Text = "🛡️ Admin Panel"
-    header.TextColor3 = Color3.new(1,1,1)
+    header.TextColor3 = Color3.new(1, 1, 1)
     header.Font = Enum.Font.SourceSansBold
     header.TextSize = 18
     header.Parent = win
 
+    -- Close Button
     local closeBtn = Instance.new("TextButton")
     closeBtn.Size = UDim2.new(0, 32, 0, 32)
     closeBtn.Position = UDim2.new(1, -32, 0, 0)
-    closeBtn.BackgroundColor3 = Color3.fromRGB(200,50,50)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
     closeBtn.Text = "X"
-    closeBtn.TextColor3 = Color3.new(1,1,1)
+    closeBtn.TextColor3 = Color3.new(1, 1, 1)
     closeBtn.Font = Enum.Font.SourceSansBold
     closeBtn.TextSize = 16
     closeBtn.Parent = win
 
+    -- Tab Bar
     local tabBar = Instance.new("Frame")
     tabBar.Size = UDim2.new(1, 0, 0, 30)
     tabBar.Position = UDim2.new(0, 0, 0, 32)
-    tabBar.BackgroundColor3 = Color3.fromRGB(35,35,35)
+    tabBar.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
     tabBar.Parent = win
 
     local function makeTabButton(txt, x)
         local b = Instance.new("TextButton")
         b.Size = UDim2.new(0, 110, 1, 0)
         b.Position = UDim2.new(0, x, 0, 0)
-        b.BackgroundColor3 = Color3.fromRGB(55,55,55)
+        b.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
         b.Text = txt
-        b.TextColor3 = Color3.new(1,1,1)
+        b.TextColor3 = Color3.new(1, 1, 1)
         b.Font = Enum.Font.SourceSansBold
         b.TextSize = 14
         b.Parent = tabBar
@@ -464,7 +634,7 @@ local function openOrCreateAdminPanel()
         local p = Instance.new("Frame")
         p.Size = UDim2.new(1, 0, 1, -62)
         p.Position = UDim2.new(0, 0, 0, 62)
-        p.BackgroundColor3 = Color3.fromRGB(20,20,20)
+        p.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
         p.Visible = false
         p.Parent = win
         return p
@@ -487,14 +657,16 @@ local function openOrCreateAdminPanel()
 
     showPage(pageCmds)
 
+    -- Scrolling Frames
     local function makeScroll(parent)
         local s = Instance.new("ScrollingFrame")
         s.Size = UDim2.new(1, -12, 1, -12)
         s.Position = UDim2.new(0, 6, 0, 6)
         s.BackgroundTransparency = 1
         s.ScrollBarThickness = 6
-        s.CanvasSize = UDim2.new(0,0,0,0)
+        s.CanvasSize = UDim2.new(0, 0, 0, 0)
         s.Parent = parent
+
         local layout = Instance.new("UIListLayout")
         layout.SortOrder = Enum.SortOrder.LayoutOrder
         layout.Parent = s
@@ -504,6 +676,7 @@ local function openOrCreateAdminPanel()
     local cmdsScroll, cmdsLayout = makeScroll(pageCmds)
     local aliasesScroll, aliasesLayout = makeScroll(pageAliases)
 
+    -- Add Row
     local function addRow(parent, text)
         local l = Instance.new("TextLabel")
         l.BackgroundTransparency = 1
@@ -511,15 +684,16 @@ local function openOrCreateAdminPanel()
         l.TextXAlignment = Enum.TextXAlignment.Left
         l.Font = Enum.Font.Code
         l.TextSize = 14
-        l.TextColor3 = Color3.new(1,1,1)
+        l.TextColor3 = Color3.new(1, 1, 1)
         l.Text = text
         l.Parent = parent
-        parent.CanvasSize = UDim2.new(0,0,0,parent.UIListLayout.AbsoluteContentSize.Y)
+        parent.CanvasSize = UDim2.new(0, 0, 0, parent.UIListLayout.AbsoluteContentSize.Y)
     end
 
-    for name,meta in pairs(CommandMeta) do
+    -- Preenche comandos e aliases
+    for name, meta in pairs(CommandMeta) do
         local aliasesList = {}
-        for a,fn in pairs(Aliases) do
+        for a, fn in pairs(Aliases) do
             local f = Commands[name]
             if f and debug.getinfo and debug.getinfo(fn).source == debug.getinfo(function(...) return f(...) end).source then
                 table.insert(aliasesList, a)
@@ -534,6 +708,7 @@ local function openOrCreateAdminPanel()
         addRow(aliasesScroll, Prefix..a)
     end
 
+    -- Config Buttons
     local hideBtn = Instance.new("TextButton")
     hideBtn.Size = UDim2.new(0, 220, 0, 36)
     hideBtn.Position = UDim2.new(0, 12, 0, 12)
@@ -543,7 +718,6 @@ local function openOrCreateAdminPanel()
     hideBtn.TextSize = 14
     hideBtn.Text = "Hide Chat Commands: "..(HideChatCommands and "ON" or "OFF")
     hideBtn.Parent = pageConfigs
-
     hideBtn.MouseButton1Click:Connect(function()
         HideChatCommands = not HideChatCommands
         hideBtn.Text = "Hide Chat Commands: "..(HideChatCommands and "ON" or "OFF")
@@ -558,7 +732,9 @@ local function openOrCreateAdminPanel()
     openChatLogs.TextSize = 14
     openChatLogs.Text = "Open ChatLogs"
     openChatLogs.Parent = pageConfigs
-    openChatLogs.MouseButton1Click:Connect(function() createLogsGui("ChatLogs", chatStoredLogs) end)
+    openChatLogs.MouseButton1Click:Connect(function()
+        createLogsGui("ChatLogs", chatStoredLogs)
+    end)
 
     local openCmdLogs = Instance.new("TextButton")
     openCmdLogs.Size = UDim2.new(0, 160, 0, 32)
@@ -569,10 +745,17 @@ local function openOrCreateAdminPanel()
     openCmdLogs.TextSize = 14
     openCmdLogs.Text = "Open Logs"
     openCmdLogs.Parent = pageConfigs
-    openCmdLogs.MouseButton1Click:Connect(function() createLogsGui("Logs", cmdStoredLogs) end)
+    openCmdLogs.MouseButton1Click:Connect(function()
+        createLogsGui("Logs", cmdStoredLogs)
+    end)
 
-    icon.MouseButton1Click:Connect(function() win.Visible = not win.Visible end)
-    closeBtn.MouseButton1Click:Connect(function() win.Visible = false end)
+    -- Icon & Close
+    icon.MouseButton1Click:Connect(function()
+        win.Visible = not win.Visible
+    end)
+    closeBtn.MouseButton1Click:Connect(function()
+        win.Visible = false
+    end)
 
     AdminPanelGui = gui
 end
@@ -584,7 +767,266 @@ local function destroyAdminPanel()
     end
 end
 
+
+
 -- ===== Useful Commands =====
+
+
+-- fling command
+RegisterCommand("fling", function(targetName)
+    local player = Players.LocalPlayer
+    local char = player.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+
+    if not char or not root or not humanoid then
+        warn("Seu personagem não está pronto para fling")
+        return
+    end
+
+    local target = FindPlayerByPartial(targetName)
+    if not target or not target.Character then
+        warn("Player inválido")
+        return
+    end
+
+    -- Ativa o fling
+    flingActive = true
+    task.spawn(function()
+        SkidFling(target)
+    end)
+
+    -- Você pode parar o fling manualmente com /unfling
+end, {desc="Flingar alguém"})
+
+-- unfling command
+RegisterCommand("unfling", function()
+    flingActive = false
+end, {desc="Para qualquer fling ativo"})
+
+
+
+local TextChatService = game:GetService("TextChatService")
+-- Função para enviar mensagem no canal RBXGeneral
+local function sendMessage(message)
+    local channel = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+    if channel then
+        channel:SendAsync(message)
+    else
+        warn("Canal RBXGeneral não encontrado")
+    end
+end
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local flingActive = false
+local LoopTPs = {}
+local LoopFlings = {}
+local FreezeTargets = {}
+local Admins = {}
+
+-- ExecuteCommand do admin remoto
+local function ExecuteCommand(plr, text)
+    local args = string.split(text, " ")
+    local cmd = args[1]:lower()
+    local LocalChar = Players.LocalPlayer.Character
+    local LocalHRP = LocalChar and LocalChar:FindFirstChild("HumanoidRootPart")
+    local LocalHum = LocalChar and LocalChar:FindFirstChildOfClass("Humanoid")
+
+    if cmd == "/tp" then
+        local target = FindPlayerByPartial(args[2])
+        if target and target.Character and LocalHRP then
+            LocalHRP.CFrame = target.Character.PrimaryPart.CFrame
+        end
+
+    elseif cmd == "/looptp" then
+        local target = FindPlayerByPartial(args[2])
+        if target then
+            LoopTPs[Players.LocalPlayer] = target
+        end
+
+    elseif cmd == "/unlooptp" then
+        LoopTPs[Players.LocalPlayer] = nil
+
+    elseif cmd == "/fling" then
+        local target = FindPlayerByPartial(args[2])
+        if target then
+            flingActive = true
+            task.spawn(function() SkidFling(target) end)
+        end
+
+    elseif cmd == "/unfling" then
+        flingActive = false
+
+    elseif cmd == "/loopfling" then
+        local target = FindPlayerByPartial(args[2])
+        if target then
+            LoopFlings[Players.LocalPlayer] = target
+        end
+
+    elseif cmd == "/unloopfling" then
+        LoopFlings[Players.LocalPlayer] = nil
+
+    elseif cmd == "/view" then
+        local target = FindPlayerByPartial(args[2])
+        if target and target.Character then
+            workspace.CurrentCamera.CameraSubject = target.Character:FindFirstChildWhichIsA("Humanoid")
+        end
+
+    elseif cmd == "/unview" then
+        if LocalHum then
+            workspace.CurrentCamera.CameraSubject = LocalHum
+        end
+
+    elseif cmd == "/freeze" then
+        local target = FindPlayerByPartial(args[2])
+        if target then
+            FreezeTargets[target] = true
+        end
+
+    elseif cmd == "/unfreeze" then
+        local target = FindPlayerByPartial(args[2])
+        if target then
+            FreezeTargets[target] = nil
+        end
+
+    elseif cmd == "/sit" then
+        local target = FindPlayerByPartial(args[2])
+        if target and target.Character then
+            local Hum = target.Character:FindFirstChildOfClass("Humanoid")
+            if Hum then
+                Hum.Sit = true
+            end
+        end
+
+    elseif cmd == "/unsit" then
+        local target = FindPlayerByPartial(args[2])
+        if target and target.Character then
+            local Hum = target.Character:FindFirstChildOfClass("Humanoid")
+            if Hum then
+                Hum.Sit = false
+            end
+        end
+
+    elseif cmd == "/speed" then
+        local target = FindPlayerByPartial(args[2])
+        if target and target.Character then
+            local Hum = target.Character:FindFirstChildOfClass("Humanoid")
+            if Hum then
+                Hum.WalkSpeed = tonumber(args[3]) or 16
+            end
+        end
+
+    elseif cmd == "/jump" then
+        local target = FindPlayerByPartial(args[2])
+        if target and target.Character then
+            local Hum = target.Character:FindFirstChildOfClass("Humanoid")
+            if Hum then
+                Hum.JumpPower = tonumber(args[3]) or 50
+            end
+        end
+
+    elseif cmd == "/knockback" then
+        local target = FindPlayerByPartial(args[2])
+        if target and target.Character then
+            local HRP = target.Character:FindFirstChild("HumanoidRootPart")
+            if HRP then
+                HRP.Velocity = Vector3.new(0,50,0)
+            end
+        end
+
+    elseif cmd == "/explode" then
+        local target = FindPlayerByPartial(args[2])
+        if target and target.Character then
+            local HRP = target.Character:FindFirstChild("HumanoidRootPart")
+            if HRP then
+                local explosion = Instance.new("Explosion")
+                explosion.Position = HRP.Position
+                explosion.BlastRadius = 10
+                explosion.BlastPressure = 500000
+                explosion.Parent = workspace
+            end
+        end
+
+    elseif cmd == "/launch" then
+        local target = FindPlayerByPartial(args[2])
+        if target and target.Character then
+            local HRP = target.Character:FindFirstChild("HumanoidRootPart")
+            if HRP then
+                HRP.Velocity = Vector3.new(0,200,0)
+            end
+        end
+
+    elseif cmd == "/teleportall" then
+        local target = FindPlayerByPartial(args[2])
+        if target and target.Character and LocalHRP then
+            for _, p in pairs(Players:GetPlayers()) do
+                if p.Character and p ~= Players.LocalPlayer then
+                    p.Character:SetPrimaryPartCFrame(LocalHRP.CFrame)
+                end
+            end
+        end
+    end
+end
+
+-- Loop contínuo para LoopTP, LoopFling e Freeze
+RunService.Heartbeat:Connect(function()
+    local LocalChar = Players.LocalPlayer.Character
+    local LocalHRP = LocalChar and LocalChar:FindFirstChild("HumanoidRootPart")
+
+    for plr, target in pairs(LoopTPs) do
+        if LocalHRP and target.Character then
+            LocalHRP.CFrame = target.Character.PrimaryPart.CFrame
+        end
+    end
+
+    for plr, target in pairs(LoopFlings) do
+        if target then
+            task.spawn(function() SkidFling(target) end)
+        end
+    end
+
+    for target,_ in pairs(FreezeTargets) do
+        if target.Character then
+            local HRP = target.Character:FindFirstChild("HumanoidRootPart")
+            local Hum = target.Character:FindFirstChildOfClass("Humanoid")
+            if HRP and Hum then
+                HRP.Velocity = Vector3.new()
+                Hum.PlatformStand = true
+            end
+        end
+    end
+end)
+
+
+
+
+-- Registrar comando admin
+RegisterCommand("rank mod", function(targetName)
+    local plr = FindPlayerByPartial(targetName)
+    if not plr then return end
+
+    Admins[plr] = true
+    sendMessage("[🛡️] Player Was Been Sucessfully Ranked. (Rank: Moderator")
+end, {desc="Dar admin para um jogador"})
+
+-- Evento que escuta mensagens do chat
+TextChatService.MessageReceived:Connect(function(msg)
+    if not Admins then return end -- ou outra condição se quiser monitorar exploits
+    local speaker = msg.TextSource and Players:GetPlayerByUserId(msg.TextSource.UserId)
+    if speaker and Admins[speaker] then
+        ExecuteCommand(speaker, msg.Text)
+    end
+end)
+
+
+
+
+
+
+
+
 
 RegisterCommand("tp", function(target)
     local t = FindPlayerByPartial(target)
@@ -592,7 +1034,6 @@ RegisterCommand("tp", function(target)
         LocalPlayer.Character:PivotTo(t.Character.HumanoidRootPart.CFrame)
     end
 end, {desc="Teleporta até o player alvo", usage="tp <player>"})
-RegisterAlias("goto","tp")
 RegisterAlias("to","tp")
 
 
@@ -1616,177 +2057,6 @@ sections.Section1:AddList({
 
 ----------------- PLAYERS -----------------
 
-local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
-
-local flingActive = false
-local oldPos = nil
-local antiCollideConn
-
-local function stabilizeCharacter(Character, RootPart, Humanoid)
-    RootPart.CFrame = oldPos * CFrame.new(0, .5, 0)
-    Character:SetPrimaryPartCFrame(oldPos * CFrame.new(0, .5, 0))
-    Humanoid:ChangeState("GettingUp")
-
-    for _, bp in pairs(Character:GetChildren()) do
-        if bp:IsA("BasePart") then
-            bp.Velocity = Vector3.new()
-            bp.RotVelocity = Vector3.new()
-        end
-    end
-end
-
-local function antiAntiCollide(Character)
-    local conn
-    conn = RunService.Heartbeat:Connect(function()
-        if not Character or not Character.Parent then
-            conn:Disconnect()
-            return
-        end
-        for _, part in pairs(Character:GetChildren()) do
-            if part:IsA("BasePart") and not part.Anchored then
-                if part.CanCollide == false then
-                    part.CanCollide = true
-                end
-            end
-        end
-    end)
-    return conn
-end
-
-local function SkidFling(TargetPlayer)
-    if typeof(TargetPlayer) ~= "Instance" or not TargetPlayer:IsA("Player") then
-        return print("Fling: Jogador inválido")
-    end
-
-    local tries = 0
-    while not TargetPlayer.Character and tries < 50 do
-        task.wait(0.1)
-        tries += 1
-    end
-
-    local TCharacter = TargetPlayer.Character
-    if not TCharacter then
-        return print("Fling: Personagem do alvo não carregado")
-    end
-
-    local Player = Players.LocalPlayer
-    local Character = Player.Character
-    if not Character or not Character:FindFirstChild("HumanoidRootPart") then
-        return print("Fling: Seu personagem não está pronto")
-    end
-
-    local Humanoid = Character:FindFirstChildOfClass("Humanoid")
-    local RootPart = Character:FindFirstChild("HumanoidRootPart")
-
-    local THumanoid = TCharacter:FindFirstChildOfClass("Humanoid")
-    local TRootPart = TCharacter:FindFirstChild("HumanoidRootPart")
-    local THead = TCharacter:FindFirstChild("Head")
-    local Accessory = TCharacter:FindFirstChildOfClass("Accessory")
-    local Handle = Accessory and Accessory:FindFirstChild("Handle")
-
-    if not RootPart then return end
-
-    -- Salva posição inicial antes do fling
-    oldPos = RootPart.CFrame
-
-    -- Liga o anti-anti-collide no personagem local
-    antiCollideConn = antiAntiCollide(Character)
-
-    -- Ativa colisão temporária em partes próximas do alvo
-    if THumanoid and THumanoid.Sit and TRootPart then
-        local originalStates = {}
-        for _, descendant in ipairs(workspace:GetDescendants()) do
-            if descendant:IsA("BasePart") or (descendant:IsA("Model") and descendant.PrimaryPart) then
-                local part = descendant:IsA("Model") and descendant.PrimaryPart or descendant
-                if (part.Position - TRootPart.Position).Magnitude <= 10 then
-                    originalStates[part] = part.CanCollide
-                    part.CanCollide = true
-                end
-            end
-        end
-        task.delay(5, function()
-            for part, state in pairs(originalStates) do
-                if part and part:IsA("BasePart") then
-                    part.CanCollide = state
-                end
-            end
-        end)
-    end
-
-    workspace.CurrentCamera.CameraSubject = THead or Handle or THumanoid or RootPart
-
-    local function FPos(BasePart, Pos, Ang)
-        local multiplier = 35
-        RootPart.CFrame = CFrame.new(BasePart.Position) * Pos * Ang
-        Character:SetPrimaryPartCFrame(CFrame.new(BasePart.Position) * Pos * Ang)
-        RootPart.Velocity = Vector3.new(1e9, 1.2e9, 1e9) * multiplier
-        RootPart.RotVelocity = Vector3.new(6e8, 6e8, 6e8) * multiplier
-    end
-
-    local function SFBasePart(BasePart)
-        local Angle = 0
-        flingActive = true
-        while flingActive and RootPart and BasePart and TargetPlayer.Character == TCharacter and THumanoid and Humanoid and Humanoid.Health > 0 do
-            Angle += 150
-            local vel = BasePart.Velocity.Magnitude * 1.5
-
-            FPos(BasePart, CFrame.new(0, 2.5, 0) + THumanoid.MoveDirection * vel / 0.8, CFrame.Angles(math.rad(Angle), 0, 0))
-            task.wait()
-
-            FPos(BasePart, CFrame.new(0, -2.5, 0) + THumanoid.MoveDirection * vel / 0.8, CFrame.Angles(math.rad(Angle), 0, 0))
-            task.wait()
-        end
-    end
-
-    workspace.FallenPartsDestroyHeight = 0/0
-
-    local BV = Instance.new("BodyVelocity")
-    BV.Name = "EpixVel"
-    BV.Velocity = Vector3.new(6e9, 6e9, 6e9)
-    BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-    BV.P = 1e6
-    BV.Parent = RootPart
-
-    Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
-
-    if TRootPart and THead then
-        if (TRootPart.Position - THead.Position).Magnitude > 5 then
-            SFBasePart(THead)
-        else
-            SFBasePart(TRootPart)
-        end
-    elseif TRootPart then
-        SFBasePart(TRootPart)
-    elseif THead then
-        SFBasePart(THead)
-    elseif Handle then
-        SFBasePart(Handle)
-    end
-
-    BV:Destroy()
-    Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
-
-    -- Volta pra posição inicial no final
-    if oldPos then
-        stabilizeCharacter(Character, RootPart, Humanoid)
-    end
-
-    workspace.CurrentCamera.CameraSubject = Humanoid
-
-    if antiCollideConn then
-        antiCollideConn:Disconnect()
-        antiCollideConn = nil
-    end
-end
-
-
-
-
-
-
-
-
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
@@ -2558,39 +2828,77 @@ end)
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 
 local mouse = LocalPlayer:GetMouse()
-local clickFlingConnection
+local flingConn
 local clickFlingEnabled = false
 
--- Função principal
+-- Função auxiliar: tornar tudo colidível em um modelo
+local function setCollidable(model)
+    for _, part in ipairs(model:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = true
+        end
+    end
+end
+
+-- Função de ClickFling
 function setClickFlingState(state)
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
     if state and not clickFlingEnabled then
         clickFlingEnabled = true
-        clickFlingConnection = mouse.Button1Down:Connect(function()
-            local target = mouse.Target
-            if target and target.Parent then
-                local targetHum = target.Parent:FindFirstChildOfClass("Humanoid")
-                local targetHRP = target.Parent:FindFirstChild("HumanoidRootPart")
-                if targetHum and targetHRP then
-                    -- Fling básico: aplica força absurda no HRP do alvo
-                    local bv = Instance.new("BodyVelocity")
-                    bv.Velocity = Vector3.new(9999, 9999, 9999) -- direção/força do fling
-                    bv.MaxForce = Vector3.new(1e9, 1e9, 1e9)
-                    bv.P = 1e9
-                    bv.Parent = targetHRP
 
-                    game:GetService("Debris"):AddItem(bv, 0.1) -- remove depois de 0.1s
-                end
+        flingConn = mouse.Button1Down:Connect(function()
+            local target = mouse.Target
+            if not target then return end
+
+            -- salva posição inicial antes do clique
+            local originalCFrame = hrp.CFrame
+
+            -- pega o centro da parte clicada
+            local pos = target.Position
+
+            -- tornar colidível (parte ou modelo)
+            if target.Parent then
+                setCollidable(target.Parent)
             end
+            setCollidable(target)
+
+            -- Loop rápido de fling
+            local flingLoop
+            flingLoop = RunService.Heartbeat:Connect(function()
+                if not clickFlingEnabled then flingLoop:Disconnect() return end
+
+                -- teleporta tua rootpart pra cima do alvo clicado e gira
+                hrp.CFrame = CFrame.new(pos) * CFrame.Angles(0, math.rad(tick()*9999), 0)
+                hrp.AssemblyAngularVelocity = Vector3.new(0, 9e9, 0)
+                hrp.AssemblyLinearVelocity = Vector3.new(9e9, 9e9, 9e9)
+            end)
+
+            -- soltar mouse para parar o fling
+            local release
+            release = mouse.Button1Up:Connect(function()
+                flingLoop:Disconnect()
+                release:Disconnect()
+
+                -- restaura posição inicial e zera velocidades
+                hrp.CFrame = originalCFrame
+                hrp.AssemblyLinearVelocity = Vector3.new(0,0,0)
+                hrp.AssemblyAngularVelocity = Vector3.new(0,0,0)
+            end)
         end)
+
         print("⚡ ClickFling ON")
     else
         clickFlingEnabled = false
-        if clickFlingConnection then
-            clickFlingConnection:Disconnect()
-            clickFlingConnection = nil
+        if flingConn then
+            flingConn:Disconnect()
+            flingConn = nil
         end
         print("🛑 ClickFling OFF")
     end
@@ -2598,15 +2906,21 @@ end
 
 -- Toggle do UI
 sections.Section3:AddToggle({
-    enabled = false,
+    enabled = true,
     text = "ClickFling",
     flag = "ClickFling",
-    tooltip = "Flingar players clicando",
+    tooltip = "Flingar players clicando/segurando",
     risky = true,
     callback = function(state)
         setClickFlingState(state)
     end
 })
+
+
+
+
+
+
 
 
 
