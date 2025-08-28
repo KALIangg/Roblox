@@ -14,12 +14,14 @@ local Players = game:GetService("Players")
 local flingActive = false
 local oldPos = nil
 local antiCollideConn
+local restoreCollide = nil
+local CurrentTarget = nil
 
+-- Função de estabilização original
 local function stabilizeCharacter(Character, RootPart, Humanoid)
     RootPart.CFrame = oldPos * CFrame.new(0, .5, 0)
     Character:SetPrimaryPartCFrame(oldPos * CFrame.new(0, .5, 0))
     Humanoid:ChangeState("GettingUp")
-
     for _, bp in pairs(Character:GetChildren()) do
         if bp:IsA("BasePart") then
             bp.Velocity = Vector3.new()
@@ -28,6 +30,7 @@ local function stabilizeCharacter(Character, RootPart, Humanoid)
     end
 end
 
+-- Anti-Anti-Collide
 local function antiAntiCollide(Character)
     local conn
     conn = RunService.Heartbeat:Connect(function()
@@ -46,9 +49,79 @@ local function antiAntiCollide(Character)
     return conn
 end
 
+-- Colisão forçada para alvo + veículo
+local function forceCollide(TargetCharacter)
+    local originalStates = {}
+
+    -- Alvo (personagem)
+    for _, desc in ipairs(TargetCharacter:GetDescendants()) do
+        if desc:IsA("BasePart") or desc:IsA("MeshPart") then
+            originalStates[desc] = desc.CanCollide
+            desc.CanCollide = true
+        end
+    end
+
+    -- Se estiver sentado, também ativa colisão do objeto que está sentando
+    local THumanoid = TargetCharacter:FindFirstChildOfClass("Humanoid")
+    if THumanoid and THumanoid.Sit and THumanoid.SeatPart then
+        local seat = THumanoid.SeatPart
+        for _, desc in ipairs(seat:GetDescendants()) do
+            if desc:IsA("BasePart") or desc:IsA("MeshPart") then
+                originalStates[desc] = desc.CanCollide
+                desc.CanCollide = true
+            end
+        end
+    end
+
+    -- Função para restaurar
+    return function()
+        for part, state in pairs(originalStates) do
+            if part and part:IsA("BasePart") then
+                part.CanCollide = state
+            end
+        end
+    end
+end
+
+-- Stop do fling
+local function StopSkidFling()
+    flingActive = false
+
+    local player = Players.LocalPlayer
+    local char = player.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+
+    -- Remove BodyVelocity
+    if root then
+        local bv = root:FindFirstChild("EpixVel")
+        if bv then
+            bv:Destroy()
+        end
+    end
+
+    -- Restaura colisão do alvo
+    if restoreCollide then
+        restoreCollide()
+        restoreCollide = nil
+    end
+
+    -- Estabiliza o personagem local
+    if char and root and humanoid and oldPos then
+        stabilizeCharacter(char, root, humanoid)
+    end
+
+    -- Desconecta anti-collide
+    if antiCollideConn then
+        antiCollideConn:Disconnect()
+        antiCollideConn = nil
+    end
+end
+
+-- SkidFling antigo com colisão atualizada
 local function SkidFling(TargetPlayer)
     if typeof(TargetPlayer) ~= "Instance" or not TargetPlayer:IsA("Player") then
-        return print("Fling: Jogador inválido")
+        return warn("Fling: Jogador inválido")
     end
 
     local tries = 0
@@ -58,14 +131,12 @@ local function SkidFling(TargetPlayer)
     end
 
     local TCharacter = TargetPlayer.Character
-    if not TCharacter then
-        return print("Fling: Personagem do alvo não carregado")
-    end
+    if not TCharacter then return warn("Fling: Personagem do alvo não carregado") end
 
     local Player = Players.LocalPlayer
     local Character = Player.Character
     if not Character or not Character:FindFirstChild("HumanoidRootPart") then
-        return print("Fling: Seu personagem não está pronto")
+        return warn("Fling: Seu personagem não está pronto")
     end
 
     local Humanoid = Character:FindFirstChildOfClass("Humanoid")
@@ -79,31 +150,13 @@ local function SkidFling(TargetPlayer)
 
     if not RootPart then return end
 
-    -- Salva posição inicial antes do fling
     oldPos = RootPart.CFrame
-
-    -- Liga o anti-anti-collide no personagem local
     antiCollideConn = antiAntiCollide(Character)
+    CurrentTarget = TCharacter
 
-    -- Ativa colisão temporária em partes próximas do alvo
-    if THumanoid and THumanoid.Sit and TRootPart then
-        local originalStates = {}
-        for _, descendant in ipairs(workspace:GetDescendants()) do
-            if descendant:IsA("BasePart") or (descendant:IsA("Model") and descendant.PrimaryPart) then
-                local part = descendant:IsA("Model") and descendant.PrimaryPart or descendant
-                if (part.Position - TRootPart.Position).Magnitude <= 10 then
-                    originalStates[part] = part.CanCollide
-                    part.CanCollide = true
-                end
-            end
-        end
-        task.delay(5, function()
-            for part, state in pairs(originalStates) do
-                if part and part:IsA("BasePart") then
-                    part.CanCollide = state
-                end
-            end
-        end)
+    -- Colisão forçada
+    if THumanoid and TRootPart then
+        restoreCollide = forceCollide(TCharacter)
     end
 
     workspace.CurrentCamera.CameraSubject = THead or Handle or THumanoid or RootPart
@@ -111,7 +164,9 @@ local function SkidFling(TargetPlayer)
     local function FPos(BasePart, Pos, Ang)
         local multiplier = 35
         RootPart.CFrame = CFrame.new(BasePart.Position) * Pos * Ang
-        Character:SetPrimaryPartCFrame(CFrame.new(BasePart.Position) * Pos * Ang)
+        if Character.PrimaryPart then
+            Character:SetPrimaryPartCFrame(CFrame.new(BasePart.Position) * Pos * Ang)
+        end
         RootPart.Velocity = Vector3.new(1e9, 1.2e9, 1e9) * multiplier
         RootPart.RotVelocity = Vector3.new(6e8, 6e8, 6e8) * multiplier
     end
@@ -125,9 +180,11 @@ local function SkidFling(TargetPlayer)
 
             FPos(BasePart, CFrame.new(0, 2.5, 0) + THumanoid.MoveDirection * vel / 0.8, CFrame.Angles(math.rad(Angle), 0, 0))
             task.wait()
+            if not flingActive then break end
 
             FPos(BasePart, CFrame.new(0, -2.5, 0) + THumanoid.MoveDirection * vel / 0.8, CFrame.Angles(math.rad(Angle), 0, 0))
             task.wait()
+            if not flingActive then break end
         end
     end
 
@@ -159,7 +216,6 @@ local function SkidFling(TargetPlayer)
     BV:Destroy()
     Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
 
-    -- Volta pra posição inicial no final
     if oldPos then
         stabilizeCharacter(Character, RootPart, Humanoid)
     end
@@ -170,7 +226,15 @@ local function SkidFling(TargetPlayer)
         antiCollideConn:Disconnect()
         antiCollideConn = nil
     end
+
+    -- Restaura colisão
+    if restoreCollide then
+        restoreCollide()
+        restoreCollide = nil
+    end
 end
+
+
 
 
 local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/drillygzzly/Other/main/1"))()
@@ -293,7 +357,7 @@ local TextChatService = game:GetService("TextChatService")
 local StarterGui = game:GetService("StarterGui")
 local TeleportService = game:GetService("TeleportService")
 
-local Prefix = "/"
+local Prefix = ":"
 
 local Commands = {}
 local Registered = {}
@@ -801,7 +865,7 @@ end, {desc="Flingar alguém"})
 
 -- unfling command
 RegisterCommand("unfling", function()
-    flingActive = false
+    StopSkidFling()
 end, {desc="Para qualquer fling ativo"})
 
 
@@ -1003,7 +1067,7 @@ end)
 
 
 -- Registrar comando admin
-RegisterCommand("rank mod", function(targetName)
+RegisterCommand("modrank", function(targetName)
     local plr = FindPlayerByPartial(targetName)
     if not plr then return end
 
@@ -2369,15 +2433,10 @@ sections.Section5:AddToggle({
     flag = "Fling",
     tooltip = "Fling com Toggle",
     callback = function(state)
-        local player = Players.LocalPlayer
-        local char = player.Character
-        local root = char and char:FindFirstChild("HumanoidRootPart")
-        local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-
-        flingActive = state
+        local target = Players:FindFirstChild(SelectedPlayer)
         if state then
-            local target = Players:FindFirstChild(SelectedPlayer)
             if target then
+                flingActive = true
                 task.spawn(function()
                     SkidFling(target)
                 end)
@@ -2385,12 +2444,11 @@ sections.Section5:AddToggle({
                 warn("Player inválido")
             end
         else
-            if char and root and humanoid and oldPos then
-                stabilizeCharacter(char, root, humanoid)
-            end
+            StopSkidFling()
         end
     end
 })
+
 
 
 
@@ -3187,6 +3245,93 @@ sections.Section3:AddToggle({
 		end
 	end
 })
+
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+-- Variável que vai armazenar o ID digitado na TextBox
+local animationID = nil
+
+-- Track da animação que vai tocar
+local currentTrack = nil
+
+-- ===========================
+-- TextBox
+-- ===========================
+sections.Section3:AddBox({
+    enabled = true,
+    focused = true,
+    text = "Animation ID",
+    input = "Digite o ID da animação...",
+    flag = "AnimBox",
+    risky = false,
+    callback = function(v)
+        animationID = tonumber(v)
+        print("ID definido:", animationID)
+    end
+})
+
+-- ===========================
+-- Botão
+-- ===========================
+sections.Section3:AddButton({
+    enabled = true,
+    text = "Tocar Animação",
+    flag = "PlayAnim",
+    tooltip = "Toca a animação e para se o jogador se mexer",
+    risky = false,
+    confirm = false,
+    callback = function()
+        if not animationID then
+            warn("Nenhum ID definido!")
+            return
+        end
+
+        -- Para qualquer animação anterior
+        if currentTrack and currentTrack.IsPlaying then
+            currentTrack:Stop()
+        end
+
+        -- Cria a animação
+        local anim = Instance.new("Animation")
+        anim.AnimationId = "rbxassetid://" .. animationID
+        currentTrack = humanoid:LoadAnimation(anim)
+        currentTrack:Play()
+
+        -- Conecta verificação de movimento
+        local conn
+        conn = RunService.RenderStepped:Connect(function()
+            if humanoid.MoveDirection.Magnitude > 0 then
+                if currentTrack.IsPlaying then
+                    currentTrack:Stop()
+                    print("Jogador se mexeu, animação parada.")
+                end
+                conn:Disconnect()
+            end
+        end)
+    end
+})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 local Players = game:GetService("Players")
