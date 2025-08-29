@@ -350,35 +350,49 @@ MiscTab:Button{
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
 local UIS = game:GetService("UserInputService")
 local Debris = game:GetService("Debris")
 
--- Variáveis principais
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
 local flashActive = false
 local flashConn
 local flashFolder
-local playAnim
-local attachParts = {}
-local targetSpeed = 600 -- velocidade máxima, controlada pelo slider
-local currentSpeed = 50 -- velocidade atual, controlada por Q/E e boost
+local inputBeganConn
+local inputEndedConn
+local phaseTool
+
+local targetSpeed = 600
+local currentSpeed = 50
 local defaultFOV = Camera.FieldOfView
 local maxFOV = 110
 local strikecolor = Color3.fromRGB(255,0,0)
 
--- Boost
 local boostActive = false
 local boostDuration = 6.5
 local boostSpeedExtra = 500
 local boostAnimId = "rbxassetid://73220746306116"
 local breakSoundId = "rbxassetid://18950094486"
 
--- Teclas Q/E seguráveis
 local keysHeld = {Q=false, E=false}
 local inputMovement = {W=false, A=false, S=false, D=false}
+local keysDown = {W=false, A=false, S=false, D=false}
 
---== UI ==
+local newAnimations = {
+    Idle = 106169111259587,
+    Run = 91648079587853
+}
+local idleTrack, runTrack
+
+local noclipConnection
+local noclipEnabled = false
+local phaseAnim
+local phaseActive = false
+
+local savedAnimateClone
+
+-- UI
 MiscTab:ColorPicker{
     Name = "Flash Color",
     Style = Mercury.ColorPickerStyles.Legacy,
@@ -386,7 +400,6 @@ MiscTab:ColorPicker{
         strikecolor = color
     end
 }
-
 MiscTab:Slider{
     Name = "Flash Speed",
     Default = targetSpeed,
@@ -398,7 +411,7 @@ MiscTab:Slider{
     end
 }
 
---== Funções ==
+-- Funções
 local function smoothFOV(target)
     TweenService:Create(Camera, TweenInfo.new(0.4, Enum.EasingStyle.Quad), {FieldOfView = target}):Play()
 end
@@ -412,8 +425,9 @@ local function createDynamicLightning(basePos, totalLength, segments)
             math.random(-segmentLength/2, segmentLength/2),
             math.random(-segmentLength, segmentLength)
         )
-        local endPos = prevPos - LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * segmentLength + offset
-
+        local char = LocalPlayer.Character
+        if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+        local endPos = prevPos - char.HumanoidRootPart.CFrame.LookVector * segmentLength + offset
         local part = Instance.new("Part")
         part.Anchored = true
         part.CanCollide = false
@@ -422,32 +436,37 @@ local function createDynamicLightning(basePos, totalLength, segments)
         part.Size = Vector3.new(0.09 + math.random()*0.1, 0.09 + math.random()*0.1, (prevPos - endPos).Magnitude)
         part.CFrame = CFrame.new((prevPos+endPos)/2, endPos)
         part.Parent = flashFolder
-
         local tween = TweenService:Create(part, TweenInfo.new(0.1 + math.random()*0.05, Enum.EasingStyle.Linear), {Transparency = 1})
         tween:Play()
         tween.Completed:Connect(function() part:Destroy() end)
-
         prevPos = endPos
     end
 end
 
+local function loadAnimation(humanoid, animId, priority)
+    local anim = Instance.new("Animation")
+    anim.AnimationId = "rbxassetid://" .. animId
+    local track = humanoid:LoadAnimation(anim)
+    track.Priority = priority
+    return track
+end
 
+local function updateMovement()
+    if not idleTrack or not runTrack then return end
+    local anyKey = keysDown.W or keysDown.A or keysDown.S or keysDown.D
+    if anyKey and not runTrack.IsPlaying then
+        idleTrack:Stop()
+        runTrack:Play()
+    elseif not anyKey and not idleTrack.IsPlaying then
+        runTrack:Stop()
+        idleTrack:Play()
+    end
+end
 
-
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
-
-local noclipConnection -- conexão para o loop
-local noclipEnabled = false
-
--- Função para ativar noclip
-function noclip()
+local function noclip()
     if noclipEnabled then return end
     noclipEnabled = true
     local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    local humanoid = character:WaitForChild("Humanoid")
-
     noclipConnection = RunService.Stepped:Connect(function()
         if character and character:FindFirstChild("HumanoidRootPart") then
             for _, part in pairs(character:GetDescendants()) do
@@ -457,18 +476,15 @@ function noclip()
             end
         end
     end)
-    print("🚀 Noclip ativado")
 end
 
--- Função para desativar noclip
-function clip()
+local function clip()
     if not noclipEnabled then return end
     noclipEnabled = false
     if noclipConnection then
         noclipConnection:Disconnect()
         noclipConnection = nil
     end
-
     local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
     if character then
         for _, part in pairs(character:GetDescendants()) do
@@ -477,15 +493,93 @@ function clip()
             end
         end
     end
-    print("🛑 Noclip desativado")
 end
 
+local function startPhase(hum)
+    if phaseAnim and phaseAnim.IsPlaying then return end
+    local anim = Instance.new("Animation")
+    anim.AnimationId = "rbxassetid://82363856064263"
+    phaseAnim = hum:LoadAnimation(anim)
+    phaseAnim.Priority = Enum.AnimationPriority.Action
+    phaseAnim:Play()
+    phaseActive = true
+    noclip()
+end
 
+local function stopPhase()
+    if phaseAnim and phaseAnim.IsPlaying then
+        phaseAnim:Stop()
+    end
+    phaseActive = false
+    clip()
+end
 
+local function bindInputs(hum, hrp)
+    if inputBeganConn then inputBeganConn:Disconnect() end
+    if inputEndedConn then inputEndedConn:Disconnect() end
 
+    inputBeganConn = UIS.InputBegan:Connect(function(input, gpe)
+        if gpe then return end
 
+        if keysDown[input.KeyCode.Name] ~= nil then
+            keysDown[input.KeyCode.Name] = true
+            updateMovement()
+        end
+        if inputMovement[input.KeyCode.Name] ~= nil then
+            inputMovement[input.KeyCode.Name] = true
+        end
+        if input.KeyCode == Enum.KeyCode.Q then keysHeld.Q = true end
+        if input.KeyCode == Enum.KeyCode.E then keysHeld.E = true end
 
---== TOGGLE FLASH ==
+        if input.KeyCode == Enum.KeyCode.LeftShift and not boostActive and flashActive then
+            boostActive = true
+            local prevInput = {}
+            for k,v in pairs(inputMovement) do prevInput[k] = v; inputMovement[k] = false end
+            if runTrack and runTrack.IsPlaying then runTrack:Stop() end
+            if idleTrack and idleTrack.IsPlaying then idleTrack:Stop() end
+            hum.WalkSpeed = 0
+            hrp.AssemblyLinearVelocity = Vector3.new(0,0,0)
+
+            local boostAnim = Instance.new("Animation")
+            boostAnim.AnimationId = boostAnimId
+            local boostTrack = hum:LoadAnimation(boostAnim)
+            boostTrack.Priority = Enum.AnimationPriority.Action
+            boostTrack:Play()
+
+            task.delay(boostDuration, function()
+                if boostTrack.IsPlaying then boostTrack:Stop() end
+                currentSpeed = targetSpeed + boostSpeedExtra
+                hum.WalkSpeed = currentSpeed
+                local sound = Instance.new("Sound")
+                sound.SoundId = breakSoundId
+                sound.Volume = 1
+                sound.Parent = hrp
+                sound:Play()
+                Debris:AddItem(sound, 5)
+                for k,v in pairs(prevInput) do inputMovement[k] = v end
+                boostActive = false
+                updateMovement()
+            end)
+        end
+
+        if input.KeyCode == Enum.KeyCode.T then
+            if phaseActive then stopPhase() else startPhase(hum) end
+        end
+    end)
+
+    inputEndedConn = UIS.InputEnded:Connect(function(input, gpe)
+        if keysDown[input.KeyCode.Name] ~= nil then
+            keysDown[input.KeyCode.Name] = false
+            updateMovement()
+        end
+        if inputMovement[input.KeyCode.Name] ~= nil then
+            inputMovement[input.KeyCode.Name] = false
+        end
+        if input.KeyCode == Enum.KeyCode.Q then keysHeld.Q = false end
+        if input.KeyCode == Enum.KeyCode.E then keysHeld.E = false end
+    end)
+end
+
 MiscTab:Toggle{
     Name = "Deus Da Velocidade.",
     StartingState = false,
@@ -499,116 +593,41 @@ MiscTab:Toggle{
 
         if state then
             flashActive = true
-            flashFolder = Instance.new("Folder", workspace)
+            flashFolder = Instance.new("Folder")
             flashFolder.Name = "FlashEffects"
+            flashFolder.Parent = workspace
 
-            -- Animação de corrida
-            local runAnim = Instance.new("Animation")
-            runAnim.AnimationId = "rbxassetid://91648079587853"
-            playAnim = hum:LoadAnimation(runAnim)
-
-            attachParts = {}
-            for _,p in ipairs({"UpperTorso","Left Arm","Right Arm","Left Leg","Right Leg"}) do
-                local part = char:FindFirstChild(p)
-                if part then table.insert(attachParts, part) end
+            local oldAnimate = char:FindFirstChild("Animate")
+            if oldAnimate then
+                savedAnimateClone = oldAnimate:Clone()
+                oldAnimate:Destroy()
+            else
+                savedAnimateClone = nil
             end
+
+            for _, t in pairs(hum:GetPlayingAnimationTracks()) do
+                t:Stop()
+            end
+
+            idleTrack = loadAnimation(hum, newAnimations.Idle, Enum.AnimationPriority.Movement)
+            runTrack  = loadAnimation(hum, newAnimations.Run,  Enum.AnimationPriority.Movement)
+            idleTrack:Play()
+
+            currentSpeed = math.max(16, currentSpeed)
+            bindInputs(hum, hrp)
+
+            if phaseTool then phaseTool:Destroy() end
+            phaseTool = Instance.new("Tool")
+            phaseTool.Name = "Phase"
+            phaseTool.RequiresHandle = false
+            phaseTool.Parent = LocalPlayer.Backpack
+            phaseTool.Equipped:Connect(function() startPhase(hum) end)
+            phaseTool.Unequipped:Connect(stopPhase)
 
             local lastPos = hrp.Position
             local distanceTraveled = 0
-            currentSpeed = math.max(16, currentSpeed)
 
-            --== Input de movimento ==
-            UIS.InputBegan:Connect(function(key, processed)
-                if processed then return end
-                if inputMovement[key.KeyCode.Name] ~= nil then inputMovement[key.KeyCode.Name] = true end
-                if key.KeyCode == Enum.KeyCode.Q then keysHeld.Q = true end
-                if key.KeyCode == Enum.KeyCode.E then keysHeld.E = true end
-
-                --== Boost ==
-                if key.KeyCode == Enum.KeyCode.LeftShift and not boostActive and flashActive then
-                    boostActive = true
-
-                    -- Congelar player
-                    hum.WalkSpeed = 0
-                    hrp.AssemblyLinearVelocity = Vector3.new(0,0,0)
-
-                    -- Bloquear input temporariamente
-                    local prevInput = {}
-                    for k,v in pairs(inputMovement) do prevInput[k] = v; inputMovement[k] = false end
-
-                    -- Animação de preparação
-                    local boostAnim = Instance.new("Animation")
-                    boostAnim.AnimationId = boostAnimId
-                    local boostTrack = hum:LoadAnimation(boostAnim)
-                    boostTrack:Play()
-
-                    spawn(function()
-                        wait(boostDuration)
-                        boostTrack:Stop()
-
-                        -- Velocidade atual recebe target + extra
-                        currentSpeed = targetSpeed + boostSpeedExtra
-                        hum.WalkSpeed = currentSpeed
-
-                        -- Som da barreira do som
-                        local sound = Instance.new("Sound", hrp)
-                        sound.SoundId = breakSoundId
-                        sound.Volume = 1
-                        sound:Play()
-                        Debris:AddItem(sound, 5)
-
-                        -- Reativar input
-                        for k,v in pairs(prevInput) do inputMovement[k] = v end
-                        boostActive = false
-                    end)
-                end
-            end)
-
-            UIS.InputEnded:Connect(function(key, processed)
-                if inputMovement[key.KeyCode.Name] ~= nil then inputMovement[key.KeyCode.Name] = false end
-                if key.KeyCode == Enum.KeyCode.Q then keysHeld.Q = false end
-                if key.KeyCode == Enum.KeyCode.E then keysHeld.E = false end
-            end)
-
-            --== Tool Phase ==
-            local toolPhase = Instance.new("Tool", LocalPlayer.Backpack)
-            toolPhase.Name = "Phase"
-            toolPhase.RequiresHandle = false
-            local phaseAnim
-            local phaseActive = false
-
-            local function startPhase()
-                if phaseAnim and phaseAnim.IsPlaying then return end
-                local anim = Instance.new("Animation")
-                anim.AnimationId = "rbxassetid://82363856064263"
-                phaseAnim = hum:LoadAnimation(anim)
-                phaseAnim:Play()
-                phaseActive = true
-                noclip()
-            end
-
-            local function stopPhase()
-                if phaseAnim and phaseAnim.IsPlaying then phaseAnim:Stop() end
-                phaseActive = false
-                clip()
-            end
-
-            toolPhase.Equipped:Connect(startPhase)
-            toolPhase.Unequipped:Connect(stopPhase)
-
-            UIS.InputBegan:Connect(function(key, processed)
-                if key.KeyCode == Enum.KeyCode.T then
-                    if phaseActive then
-                        stopPhase()
-                    else 
-                        startPhase()
-                    end
-                end
-            end)
-
-            --== Loop principal ==
             flashConn = RunService.RenderStepped:Connect(function(dt)
-                -- Ajuste de currentSpeed via Q/E com limite mínimo de 16
                 if keysHeld.Q then currentSpeed = math.max(16, currentSpeed - 400*dt) end
                 if keysHeld.E then currentSpeed = math.min(targetSpeed, currentSpeed + 400*dt) end
 
@@ -616,22 +635,18 @@ MiscTab:Toggle{
                     hum.WalkSpeed = 0
                     hrp.AssemblyLinearVelocity = Vector3.new(0,0,0)
                     smoothFOV(defaultFOV)
-                    if playAnim.IsPlaying then playAnim:Stop() end
                     return
                 end
 
-                -- Movimento
                 if inputMovement.W or inputMovement.A or inputMovement.S or inputMovement.D then
                     hum.WalkSpeed = currentSpeed
                     smoothFOV(maxFOV)
-                    if not playAnim.IsPlaying then playAnim:Play() end
-
                     local delta = (hrp.Position - lastPos).Magnitude
                     distanceTraveled = distanceTraveled + delta
                     if delta > 0.2 then
                         local numRays = math.clamp(math.floor(currentSpeed/100), 1, 4)
                         local lightningLength = math.clamp(distanceTraveled, 5, 20)
-                        for r = 1, numRays do
+                        for _ = 1, numRays do
                             createDynamicLightning(hrp.Position + hrp.CFrame.LookVector*2, lightningLength, math.random(4,8))
                         end
                     end
@@ -641,21 +656,34 @@ MiscTab:Toggle{
                     local vel = hrp.AssemblyLinearVelocity
                     hrp.AssemblyLinearVelocity = Vector3.new(0, vel.Y, 0)
                     smoothFOV(defaultFOV)
-                    if playAnim.IsPlaying then playAnim:Stop() end
                 end
             end)
-
         else
-            -- Desativar Flash
             flashActive = false
-            hum.WalkSpeed = 16
-            smoothFOV(defaultFOV)
-            if flashConn then flashConn:Disconnect() end
-            if flashFolder then flashFolder:Destroy() end
-            if playAnim and playAnim.IsPlaying then playAnim:Stop() end
+            if flashConn then flashConn:Disconnect() flashConn = nil end
+            if inputBeganConn then inputBeganConn:Disconnect() inputBeganConn = nil end
+            if inputEndedConn then inputEndedConn:Disconnect() inputEndedConn = nil end
+            if flashFolder then flashFolder:Destroy() flashFolder = nil end
+            if idleTrack and idleTrack.IsPlaying then idleTrack:Stop() end
+            if runTrack and runTrack.IsPlaying then runTrack:Stop() end
+            stopPhase()
+            if phaseTool then phaseTool:Destroy() phaseTool = nil end
+
+            local hum2 = char:FindFirstChildOfClass("Humanoid")
+            if hum2 then
+                hum2.WalkSpeed = 16
+                smoothFOV(defaultFOV)
+            end
+
+            if savedAnimateClone and not char:FindFirstChild("Animate") then
+                savedAnimateClone:Clone().Parent = char
+            end
         end
     end
 }
+
+
+
 
 
 
