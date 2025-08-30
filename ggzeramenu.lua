@@ -2993,7 +2993,6 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Camera = workspace.CurrentCamera
 
-local LocalPlayer = Players.LocalPlayer
 local Humanoid
 local cameraPos = Vector3.new()
 local cameraRot = Vector2.new()
@@ -3247,11 +3246,116 @@ sections.Section3:AddToggle({
 })
 
 
+
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TextChatService = game:GetService("TextChatService")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+-- Lista de animações de RP
+local RPAnimations = {
+    ["/deitar"] = 104049807204779,
+    ["/ameacar"] = 124747493968285,
+    ["/sarrar"] = 104826288857844,
+    ["/passinho"] = 103360497719320,
+    ["/balanco"] = 129357062468183,
+    ["/aura"] = 122746752555782,
+    ["/aura2"] = 98352002677627,
+    ["/aura3"] = 87245594012846,
+    ["/parar"] = "stop" -- comando extra pra cancelar manualmente
+}
+
+-- Flag de toggle
+local rpAnimsEnabled = false
+local currentTrack -- guarda a animação atual
+
+-- Função pra tocar animação
+local function playAnim(animId)
+    if currentTrack and currentTrack.IsPlaying then
+        currentTrack:Stop()
+    end
+
+    if animId == "stop" then
+        currentTrack = nil
+        return
+    end
+
+    local anim = Instance.new("Animation")
+    anim.AnimationId = "rbxassetid://"..animId
+    local track = humanoid:LoadAnimation(anim)
+    track.Priority = Enum.AnimationPriority.Action
+    track:Play()
+    currentTrack = track
+
+    -- Para se o player se mover
+    local conn
+    conn = RunService.RenderStepped:Connect(function()
+        if humanoid.MoveDirection.Magnitude > 0 then
+            if track.IsPlaying then
+                track:Stop()
+            end
+            conn:Disconnect()
+        end
+    end)
+end
+
+-- Sempre atualizar humanoid quando respawnar
+local function setupCharacter(char)
+    character = char
+    humanoid = character:WaitForChild("Humanoid")
+    currentTrack = nil
+end
+player.CharacterAdded:Connect(setupCharacter)
+
+-- Callback do TextChatService
+TextChatService.OnIncomingMessage = function(msg)
+    if not rpAnimsEnabled then return end
+    if msg.TextSource and msg.TextSource.UserId == player.UserId then
+        local text = string.lower(msg.Text)
+        local animId = RPAnimations[text]
+        if animId then
+            playAnim(animId)
+        end
+    end
+end
+
+-- Toggle
+sections.Section3:AddToggle({
+	enabled = true,
+	text = "RP Anims",
+	flag = "RPanims",
+	tooltip = "Habilita animações utilizadas pra RP.",
+	risky = false,
+	callback = function(state)
+		rpAnimsEnabled = state
+		if state then
+			print("Anims Disponiveis - /deitar, /ameacar, /sarrar, /passinho, /balanco, /parar")
+		else
+			-- Para qualquer animação ativa se desligar o toggle
+			if currentTrack and currentTrack.IsPlaying then
+				currentTrack:Stop()
+			end
+			currentTrack = nil
+		end
+	end
+})
+
+
+
+
+
+
+
+
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
-local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 
@@ -3335,7 +3439,6 @@ sections.Section3:AddButton({
 
 
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
 
 local function destroySeatParent()
     local char = LocalPlayer.Character
@@ -3454,5 +3557,5 @@ sections.Section3:AddSeparator({
 
 
 
-library:SendNotification("GGZERA Menu Injetado!", 5, Color3.new(255, 0, 0))
+library:SendNotification("[MENU] Bom jogo, GGZERA.", 5, Color3.new(255, 0, 0))
 --Window:SetOpen(true) -- Either Close Or Open Window
