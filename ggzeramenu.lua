@@ -3248,11 +3248,8 @@ sections.Section3:AddToggle({
 
 
 
-local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TextChatService = game:GetService("TextChatService")
-
-local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 
@@ -3266,12 +3263,15 @@ local RPAnimations = {
     ["/aura"] = 122746752555782,
     ["/aura2"] = 98352002677627,
     ["/aura3"] = 87245594012846,
-    ["/parar"] = "stop" -- comando extra pra cancelar manualmente
+    ["/morrer"] = 97524873576958,
+    ["/apontar"] = 88764142128140,
+    ["/mirar"] = 118139871934372,
+    ["/parar"] = "stop"
 }
 
--- Flag de toggle
-local rpAnimsEnabled = false
-local currentTrack -- guarda a animação atual
+-- Flags
+local rpModeEnabled = false
+local currentTrack -- animação atual
 
 -- Função pra tocar animação
 local function playAnim(animId)
@@ -3291,7 +3291,7 @@ local function playAnim(animId)
     track:Play()
     currentTrack = track
 
-    -- Para se o player se mover
+    -- Para se o player andar
     local conn
     conn = RunService.RenderStepped:Connect(function()
         if humanoid.MoveDirection.Magnitude > 0 then
@@ -3313,36 +3313,35 @@ player.CharacterAdded:Connect(setupCharacter)
 
 -- Callback do TextChatService
 TextChatService.OnIncomingMessage = function(msg)
-    if not rpAnimsEnabled then return end
+    if not rpModeEnabled then return end
     if msg.TextSource and msg.TextSource.UserId == player.UserId then
         local text = string.lower(msg.Text)
-        local animId = RPAnimations[text]
-        if animId then
-            playAnim(animId)
+        if RPAnimations[text] then
+            playAnim(RPAnimations[text])
         end
     end
 end
 
--- Toggle
+-- Toggle geral "Modo RP"
 sections.Section3:AddToggle({
-	enabled = true,
-	text = "RP Anims",
-	flag = "RPanims",
-	tooltip = "Habilita animações utilizadas pra RP.",
-	risky = false,
-	callback = function(state)
-		rpAnimsEnabled = state
-		if state then
-			print("Anims Disponiveis - /deitar, /ameacar, /sarrar, /passinho, /balanco, /parar")
-		else
-			-- Para qualquer animação ativa se desligar o toggle
-			if currentTrack and currentTrack.IsPlaying then
-				currentTrack:Stop()
-			end
-			currentTrack = nil
-		end
-	end
+    enabled = true,
+    text = "Modo RP",
+    flag = "RPmode",
+    tooltip = "Habilita animações de RP.",
+    risky = false,
+    callback = function(state)
+        rpModeEnabled = state
+        if state then
+            print("Modo RP Ativo ✅ - Comandos: /deitar, /ameacar, /sarrar, /passinho, /balanco, /aura, /aura2, /aura3, /parar")
+        else
+            if currentTrack and currentTrack.IsPlaying then
+                currentTrack:Stop()
+            end
+            currentTrack = nil
+        end
+    end
 })
+
 
 
 
