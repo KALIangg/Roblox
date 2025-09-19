@@ -2178,10 +2178,11 @@ local function startBang(mode, targetName)
 
 	-- 🎥 Animação
 	bangAnim = Instance.new("Animation")
-	bangAnim.AnimationId = r15(speaker) and "rbxassetid://104826288857844" or "rbxassetid://104826288857844"
+	bangAnim.AnimationId = r15(speaker) and "rbxassetid://82070755455634" or "rbxassetid://82070755455634"
 	bang = humanoid:LoadAnimation(bangAnim)
+    bang.Looped = true -- 🔁 animação em loop
 	bang:Play(0.1, 1, 1)
-	bang:AdjustSpeed(3)
+	bang:AdjustSpeed(5)
 
 	-- ⛔ Para bang quando morrer
 	bangDied = humanoid.Died:Connect(function()
