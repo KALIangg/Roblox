@@ -129,9 +129,10 @@ local function SkidFling(TargetPlayer)
         task.wait(0.1)
         tries += 1
     end
-
     local TCharacter = TargetPlayer.Character
-    if not TCharacter then return warn("Fling: Personagem do alvo não carregado") end
+    if not TCharacter then
+        return warn("Fling: Personagem do alvo não carregado")
+    end
 
     local Player = Players.LocalPlayer
     local Character = Player.Character
@@ -141,7 +142,6 @@ local function SkidFling(TargetPlayer)
 
     local Humanoid = Character:FindFirstChildOfClass("Humanoid")
     local RootPart = Character:FindFirstChild("HumanoidRootPart")
-
     local THumanoid = TCharacter:FindFirstChildOfClass("Humanoid")
     local TRootPart = TCharacter:FindFirstChild("HumanoidRootPart")
     local THead = TCharacter:FindFirstChild("Head")
@@ -237,13 +237,11 @@ end
 
 
 
+
+
 local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/drillygzzly/Other/main/1"))()
 -- local library = loadstring(game:HttpGet("https://pastefy.app/lvQzrmkq/raw"))()
 library:init() -- Initalizes Library Do Not Delete This
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local TextChatService = game:GetService("TextChatService")
 local cam = workspace.CurrentCamera
 
@@ -259,7 +257,7 @@ end
 
 
 local Window = library.NewWindow({
-	title = "GGZERA Menu | Global | ANTI-RP",
+	title = "GGZERA Menu | Global | ANTI-RP | Powered By Poze.",
 	-- size = UDim2.new(0, 525, 0, 650)
     size = UDim2.new(0, 1000, 0, 600)
 
@@ -268,8 +266,9 @@ local Window = library.NewWindow({
 local tabs = {
     Tab1 = Window:AddTab("☠️ Visuals"),
     Tab2 = Window:AddTab("🌎 Online"),
-    Tab3 = Window:AddTab("👤 Jogador"),
-    Tab4 = Window:AddTab("🔫 Armas"),
+    Tab3 = Window:AddTab("👤 Player"),
+    Tab4 = Window:AddTab("🔫 Items"),
+    Tab5 = Window:AddTab("[🛡️] Admin | Dev"),
 	Settings = library:CreateSettingsTab(Window),
 }
 
@@ -282,6 +281,7 @@ local sections = {
     Section3 = tabs.Tab3:AddSection("Jogo", 1),
     Section4 = tabs.Tab4:AddSection("Armamentos & Itens", 1),
     Section5 = tabs.Tab2:AddSection("Troll", 2),
+    Section6 = tabs.Tab5:AddSection("Server - FE", 1),
 }
 
 
@@ -332,7 +332,7 @@ end
 
 sections.Section3:AddToggle({
 	enabled = true,
-	text = "Event Logger",
+	text = "Admin Logger",
 	flag = "Logs",
 	tooltip = "Logs",
 	risky = false, -- turns text to red and sets label to risky
@@ -350,20 +350,26 @@ sections.Section3:AddToggle({
 
 -- ===== Admin Core =====
 local AdminEnabled = false
-
-local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local TextChatService = game:GetService("TextChatService")
 local StarterGui = game:GetService("StarterGui")
 local TeleportService = game:GetService("TeleportService")
 
 local Prefix = ":"
-
 local Commands = {}
 local Registered = {}
 local Aliases = {}
 local CommandMeta = {}
+
 local HideChatCommands = false
+local rpModeEnabled = false -- variável de exemplo para RP mode
+local player = LocalPlayer -- variável de exemplo para player RP
+local RPAnimations = {} -- tabela exemplo para animações RP
+
+-- Função que será chamada para executar animações RP (exemplo)
+local function playAnim(anim)
+    -- implementação da animação aqui (exemplo)
+end
 
 local function RegisterCommand(name, func, meta)
     name = name:lower()
@@ -385,14 +391,13 @@ end
 local function FindPlayerByPartial(q)
     if not q or q == "" then return nil end
     q = q:lower()
-    for _,plr in ipairs(Players:GetPlayers()) do
+    for _, plr in ipairs(Players:GetPlayers()) do
         if plr.Name:lower():sub(1, #q) == q then
             return plr
         end
     end
     return Players:FindFirstChild(q)
 end
-
 
 local function ProcessMessage(sender, message)
     if not AdminEnabled then return end
@@ -418,17 +423,19 @@ local commandPrefixes = { "!", ":", ";", ".", "/", "-" }
 
 local function startsWithPrefix(text)
     for _, p in ipairs(commandPrefixes) do
-        if text:sub(1, #p) == p then return true end
+        if text:sub(1, #p) == p then
+            return true
+        end
     end
     return false
 end
 
-
----- CREATE LOGS GUI ----
-
 local function createLogsGui(titleText, storedTable)
     local existing = LocalPlayer.PlayerGui:FindFirstChild(titleText)
-    if existing then existing.Enabled = true return end
+    if existing then
+        existing.Enabled = true
+        return
+    end
 
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Name = titleText
@@ -438,7 +445,7 @@ local function createLogsGui(titleText, storedTable)
     local Main = Instance.new("Frame")
     Main.Size = UDim2.new(0, 600, 0, 400)
     Main.Position = UDim2.new(0.2, 0, 0.2, 0)
-    Main.BackgroundColor3 = Color3.fromRGB(30,30,30)
+    Main.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     Main.BorderSizePixel = 0
     Main.Active = true
     Main.Draggable = true
@@ -446,19 +453,18 @@ local function createLogsGui(titleText, storedTable)
 
     local Title = Instance.new("TextLabel")
     Title.Size = UDim2.new(1, 0, 0, 32)
-    Title.BackgroundColor3 = Color3.fromRGB(45,45,45)
-    Title.TextColor3 = Color3.new(1,1,1)
+    Title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    Title.TextColor3 = Color3.new(1, 1, 1)
     Title.Font = Enum.Font.SourceSansBold
     Title.TextSize = 18
-    Title.Text = "📜 "..titleText
+    Title.Text = "📜 " .. titleText
     Title.Parent = Main
 
-    -- Botões de controle
     local Close = Instance.new("TextButton")
     Close.Size = UDim2.new(0, 60, 0, 26)
     Close.Position = UDim2.new(1, -65, 0, 3)
-    Close.BackgroundColor3 = Color3.fromRGB(200,50,50)
-    Close.TextColor3 = Color3.new(1,1,1)
+    Close.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    Close.TextColor3 = Color3.new(1, 1, 1)
     Close.Font = Enum.Font.SourceSansBold
     Close.TextSize = 16
     Close.Text = "X"
@@ -467,8 +473,8 @@ local function createLogsGui(titleText, storedTable)
     local Clear = Instance.new("TextButton")
     Clear.Size = UDim2.new(0, 80, 0, 26)
     Clear.Position = UDim2.new(1, -150, 0, 3)
-    Clear.BackgroundColor3 = Color3.fromRGB(70,70,200)
-    Clear.TextColor3 = Color3.new(1,1,1)
+    Clear.BackgroundColor3 = Color3.fromRGB(70, 70, 200)
+    Clear.TextColor3 = Color3.new(1, 1, 1)
     Clear.Font = Enum.Font.SourceSansBold
     Clear.TextSize = 14
     Clear.Text = "Limpar"
@@ -477,32 +483,30 @@ local function createLogsGui(titleText, storedTable)
     local Pause = Instance.new("TextButton")
     Pause.Size = UDim2.new(0, 110, 0, 26)
     Pause.Position = UDim2.new(0, 6, 0, 3)
-    Pause.BackgroundColor3 = Color3.fromRGB(70,200,70)
-    Pause.TextColor3 = Color3.new(1,1,1)
+    Pause.BackgroundColor3 = Color3.fromRGB(70, 200, 70)
+    Pause.TextColor3 = Color3.new(1, 1, 1)
     Pause.Font = Enum.Font.SourceSansBold
     Pause.TextSize = 14
     Pause.Text = "⏸️ Pausar"
     Pause.Parent = Main
 
-    -- Campo de pesquisa
     local SearchBox = Instance.new("TextBox")
     SearchBox.Size = UDim2.new(0, 250, 0, 26)
     SearchBox.Position = UDim2.new(0, 120, 0, 3)
     SearchBox.PlaceholderText = "Pesquisar mensagens..."
     SearchBox.ClearTextOnFocus = false
-    SearchBox.BackgroundColor3 = Color3.fromRGB(50,50,50)
-    SearchBox.TextColor3 = Color3.new(1,1,1)
+    SearchBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    SearchBox.TextColor3 = Color3.new(1, 1, 1)
     SearchBox.Font = Enum.Font.SourceSans
     SearchBox.TextSize = 14
     SearchBox.Parent = Main
 
-    -- ScrollingFrame com rolagem horizontal e vertical
     local Scrolling = Instance.new("ScrollingFrame")
     Scrolling.Size = UDim2.new(1, -10, 1, -44)
     Scrolling.Position = UDim2.new(0, 5, 0, 38)
     Scrolling.BackgroundTransparency = 1
     Scrolling.ScrollBarThickness = 8
-    Scrolling.CanvasSize = UDim2.new(0,0,0,0)
+    Scrolling.CanvasSize = UDim2.new(0, 0, 0, 0)
     Scrolling.HorizontalScrollBarInset = Enum.ScrollBarInset.ScrollBar
     Scrolling.Parent = Main
     Scrolling.AutomaticCanvasSize = Enum.AutomaticSize.XY
@@ -515,29 +519,27 @@ local function createLogsGui(titleText, storedTable)
 
     local paused = false
 
-    -- Função para adicionar linha de log
     local function addLine(log)
         if paused then return end
         local line = Instance.new("TextLabel")
         line.BackgroundTransparency = 1
-        line.Size = UDim2.new(0, 1, 0, 20) -- ajuste para CanvasSize dinâmico
+        line.Size = UDim2.new(0, 1, 0, 20)
         line.TextXAlignment = Enum.TextXAlignment.Left
         line.Font = Enum.Font.Code
         line.TextSize = 14
-        line.TextColor3 = Color3.new(1,1,1)
+        line.TextColor3 = Color3.new(1, 1, 1)
         line.Text = string.format("[%s] %s: %s", log.time, log.author, log.message)
         line.TextWrapped = false
         line.TextTruncate = Enum.TextTruncate.None
         line.TextScaled = false
         line.Parent = Scrolling
-        line.Size = UDim2.new(0, math.max(Scrolling.AbsoluteSize.X, #line.Text*8), 0, 20)
-        Scrolling.CanvasSize = UDim2.new(0, math.max(Scrolling.AbsoluteSize.X, #line.Text*8), 0, UIListLayout.AbsoluteContentSize.Y)
+        line.Size = UDim2.new(0, math.max(Scrolling.AbsoluteSize.X, #line.Text * 8), 0, 20)
+        Scrolling.CanvasSize = UDim2.new(0, math.max(Scrolling.AbsoluteSize.X, #line.Text * 8), 0, UIListLayout.AbsoluteContentSize.Y)
     end
 
-    -- Atualiza linhas ao digitar na pesquisa
     SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
         local query = SearchBox.Text:lower()
-        for _,v in ipairs(Scrolling:GetChildren()) do
+        for _, v in ipairs(Scrolling:GetChildren()) do
             if v:IsA("TextLabel") then
                 local show = v.Text:lower():find(query)
                 v.Visible = show and true or false
@@ -545,15 +547,20 @@ local function createLogsGui(titleText, storedTable)
         end
     end)
 
-    -- Adiciona logs já armazenados
-    for _,log in ipairs(storedTable) do addLine(log) end
+    for _, log in ipairs(storedTable) do
+        addLine(log)
+    end
 
-    Close.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
+    Close.MouseButton1Click:Connect(function()
+        ScreenGui:Destroy()
+    end)
+
     Clear.MouseButton1Click:Connect(function()
         Scrolling:ClearAllChildren()
         UIListLayout.Parent = Scrolling
         table.clear(storedTable)
     end)
+
     Pause.MouseButton1Click:Connect(function()
         paused = not paused
         Pause.Text = paused and "▶️ Continuar" or "⏸️ Pausar"
@@ -562,49 +569,38 @@ local function createLogsGui(titleText, storedTable)
     return addLine
 end
 
-
-
 do
     local channel = TextChatService:WaitForChild("TextChannels"):WaitForChild("RBXGeneral")
     channel.MessageReceived:Connect(function(msg)
         local author = msg.TextSource and msg.TextSource.Name or "Sistema"
         local message = msg.Text
         local time = os.date("%H:%M:%S")
-        local entry = {time = time, author = author, message = message}
+        local entry = { time = time, author = author, message = message }
         table.insert(chatStoredLogs, entry)
-        if startsWithPrefix(message) then table.insert(cmdStoredLogs, entry) end
+        if startsWithPrefix(message) then
+            table.insert(cmdStoredLogs, entry)
+        end
     end)
 end
 
-RegisterCommand("chatlogs", function() createLogsGui("ChatLogs", chatStoredLogs) end)
+RegisterCommand("chatlogs", function()
+    createLogsGui("ChatLogs", chatStoredLogs)
+end)
+
 RegisterCommand("unchatlogs", function()
     local gui = LocalPlayer.PlayerGui:FindFirstChild("ChatLogs")
     if gui then gui:Destroy() end
 end)
-RegisterCommand("logs", function() createLogsGui("Logs", cmdStoredLogs) end)
+
+RegisterCommand("logs", function()
+    createLogsGui("Logs", cmdStoredLogs)
+end)
+
 RegisterCommand("unlogs", function()
     local gui = LocalPlayer.PlayerGui:FindFirstChild("Logs")
     if gui then gui:Destroy() end
 end)
 
--- ===== Outgoing -> Commands exec & Incoming -> Hide local display =====
-TextChatService.OnIncomingMessage = function(message)
-    local props = Instance.new("TextChatMessageProperties")
-    local src = message.TextSource
-    local sender = src and Players:GetPlayerByUserId(src.UserId)
-    local content = message.Text
-
-    if sender and content then
-        task.spawn(ProcessMessage, sender, content)
-        if HideChatCommands and sender == LocalPlayer and content:sub(1, #Prefix) == Prefix then
-            props.Text = ""
-            props.PrefixText = ""
-            props.TextTransparency = 1
-            props.PrefixTextTransparency = 1
-            return props
-        end
-    end
-end
 
 -- ===== Admin Panel (Topbar icon + 3 abas) =====
 local AdminPanelGui
@@ -621,7 +617,6 @@ local function openOrCreateAdminPanel()
     gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
-    -- Icon
     local icon = Instance.new("ImageButton")
     icon.Name = "AdminIcon"
     icon.Size = UDim2.new(0, 50, 0, 50)
@@ -636,7 +631,6 @@ local function openOrCreateAdminPanel()
     iconcorner.CornerRadius = UDim.new(0.3, 8)
     iconcorner.Parent = icon
 
-    -- Window
     local win = Instance.new("Frame")
     win.Name = "Window"
     win.Size = UDim2.new(0, 560, 0, 360)
@@ -648,7 +642,6 @@ local function openOrCreateAdminPanel()
     win.Draggable = true
     win.Parent = gui
 
-    -- Header
     local header = Instance.new("TextLabel")
     header.Size = UDim2.new(1, -36, 0, 32)
     header.Position = UDim2.new(0, 0, 0, 0)
@@ -659,7 +652,6 @@ local function openOrCreateAdminPanel()
     header.TextSize = 18
     header.Parent = win
 
-    -- Close Button
     local closeBtn = Instance.new("TextButton")
     closeBtn.Size = UDim2.new(0, 32, 0, 32)
     closeBtn.Position = UDim2.new(1, -32, 0, 0)
@@ -670,7 +662,6 @@ local function openOrCreateAdminPanel()
     closeBtn.TextSize = 16
     closeBtn.Parent = win
 
-    -- Tab Bar
     local tabBar = Instance.new("Frame")
     tabBar.Size = UDim2.new(1, 0, 0, 30)
     tabBar.Position = UDim2.new(0, 0, 0, 32)
@@ -715,13 +706,18 @@ local function openOrCreateAdminPanel()
         p.Visible = true
     end
 
-    tabCmds.MouseButton1Click:Connect(function() showPage(pageCmds) end)
-    tabAliases.MouseButton1Click:Connect(function() showPage(pageAliases) end)
-    tabConfigs.MouseButton1Click:Connect(function() showPage(pageConfigs) end)
+    tabCmds.MouseButton1Click:Connect(function()
+        showPage(pageCmds)
+    end)
+    tabAliases.MouseButton1Click:Connect(function()
+        showPage(pageAliases)
+    end)
+    tabConfigs.MouseButton1Click:Connect(function()
+        showPage(pageConfigs)
+    end)
 
     showPage(pageCmds)
 
-    -- Scrolling Frames
     local function makeScroll(parent)
         local s = Instance.new("ScrollingFrame")
         s.Size = UDim2.new(1, -12, 1, -12)
@@ -730,7 +726,6 @@ local function openOrCreateAdminPanel()
         s.ScrollBarThickness = 6
         s.CanvasSize = UDim2.new(0, 0, 0, 0)
         s.Parent = parent
-
         local layout = Instance.new("UIListLayout")
         layout.SortOrder = Enum.SortOrder.LayoutOrder
         layout.Parent = s
@@ -740,8 +735,7 @@ local function openOrCreateAdminPanel()
     local cmdsScroll, cmdsLayout = makeScroll(pageCmds)
     local aliasesScroll, aliasesLayout = makeScroll(pageAliases)
 
-    -- Add Row
-    local function addRow(parent, text)
+    local function addRow(parent, layout, text)
         local l = Instance.new("TextLabel")
         l.BackgroundTransparency = 1
         l.Size = UDim2.new(1, -6, 0, 22)
@@ -751,10 +745,9 @@ local function openOrCreateAdminPanel()
         l.TextColor3 = Color3.new(1, 1, 1)
         l.Text = text
         l.Parent = parent
-        parent.CanvasSize = UDim2.new(0, 0, 0, parent.UIListLayout.AbsoluteContentSize.Y)
+        parent.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y)
     end
 
-    -- Preenche comandos e aliases
     for name, meta in pairs(CommandMeta) do
         local aliasesList = {}
         for a, fn in pairs(Aliases) do
@@ -764,34 +757,33 @@ local function openOrCreateAdminPanel()
             end
         end
         local desc = meta.desc or ""
-        local usage = meta.usage and (" — "..meta.usage) or ""
-        addRow(cmdsScroll, string.format("%s%s  %s", Prefix..name, usage, desc))
+        local usage = meta.usage and (" — " .. meta.usage) or ""
+        addRow(cmdsScroll, cmdsLayout, string.format("%s%s %s", Prefix .. name, usage, desc))
     end
 
-    for a,_ in pairs(Aliases) do
-        addRow(aliasesScroll, Prefix..a)
+    for a, _ in pairs(Aliases) do
+        addRow(aliasesScroll, aliasesLayout, Prefix .. a)
     end
 
-    -- Config Buttons
     local hideBtn = Instance.new("TextButton")
     hideBtn.Size = UDim2.new(0, 220, 0, 36)
     hideBtn.Position = UDim2.new(0, 12, 0, 12)
-    hideBtn.BackgroundColor3 = Color3.fromRGB(60,60,120)
-    hideBtn.TextColor3 = Color3.new(1,1,1)
+    hideBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
+    hideBtn.TextColor3 = Color3.new(1, 1, 1)
     hideBtn.Font = Enum.Font.SourceSansBold
     hideBtn.TextSize = 14
-    hideBtn.Text = "Hide Chat Commands: "..(HideChatCommands and "ON" or "OFF")
+    hideBtn.Text = "Hide Chat Commands: " .. (HideChatCommands and "ON" or "OFF")
     hideBtn.Parent = pageConfigs
     hideBtn.MouseButton1Click:Connect(function()
         HideChatCommands = not HideChatCommands
-        hideBtn.Text = "Hide Chat Commands: "..(HideChatCommands and "ON" or "OFF")
+        hideBtn.Text = "Hide Chat Commands: " .. (HideChatCommands and "ON" or "OFF")
     end)
 
     local openChatLogs = Instance.new("TextButton")
     openChatLogs.Size = UDim2.new(0, 160, 0, 32)
     openChatLogs.Position = UDim2.new(0, 12, 0, 60)
-    openChatLogs.BackgroundColor3 = Color3.fromRGB(70,130,70)
-    openChatLogs.TextColor3 = Color3.new(1,1,1)
+    openChatLogs.BackgroundColor3 = Color3.fromRGB(70, 130, 70)
+    openChatLogs.TextColor3 = Color3.new(1, 1, 1)
     openChatLogs.Font = Enum.Font.SourceSansBold
     openChatLogs.TextSize = 14
     openChatLogs.Text = "Open ChatLogs"
@@ -803,8 +795,8 @@ local function openOrCreateAdminPanel()
     local openCmdLogs = Instance.new("TextButton")
     openCmdLogs.Size = UDim2.new(0, 160, 0, 32)
     openCmdLogs.Position = UDim2.new(0, 12, 0, 100)
-    openCmdLogs.BackgroundColor3 = Color3.fromRGB(130,70,70)
-    openCmdLogs.TextColor3 = Color3.new(1,1,1)
+    openCmdLogs.BackgroundColor3 = Color3.fromRGB(130, 70, 70)
+    openCmdLogs.TextColor3 = Color3.new(1, 1, 1)
     openCmdLogs.Font = Enum.Font.SourceSansBold
     openCmdLogs.TextSize = 14
     openCmdLogs.Text = "Open Logs"
@@ -813,10 +805,10 @@ local function openOrCreateAdminPanel()
         createLogsGui("Logs", cmdStoredLogs)
     end)
 
-    -- Icon & Close
     icon.MouseButton1Click:Connect(function()
         win.Visible = not win.Visible
     end)
+
     closeBtn.MouseButton1Click:Connect(function()
         win.Visible = false
     end)
@@ -831,266 +823,7 @@ local function destroyAdminPanel()
     end
 end
 
-
-
 -- ===== Useful Commands =====
-
-
--- fling command
-RegisterCommand("fling", function(targetName)
-    local player = Players.LocalPlayer
-    local char = player.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-
-    if not char or not root or not humanoid then
-        warn("Seu personagem não está pronto para fling")
-        return
-    end
-
-    local target = FindPlayerByPartial(targetName)
-    if not target or not target.Character then
-        warn("Player inválido")
-        return
-    end
-
-    -- Ativa o fling
-    flingActive = true
-    task.spawn(function()
-        SkidFling(target)
-    end)
-
-    -- Você pode parar o fling manualmente com /unfling
-end, {desc="Flingar alguém"})
-
--- unfling command
-RegisterCommand("unfling", function()
-    StopSkidFling()
-end, {desc="Para qualquer fling ativo"})
-
-
-
-local TextChatService = game:GetService("TextChatService")
--- Função para enviar mensagem no canal RBXGeneral
-local function sendMessage(message)
-    local channel = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
-    if channel then
-        channel:SendAsync(message)
-    else
-        warn("Canal RBXGeneral não encontrado")
-    end
-end
-
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-
-local flingActive = false
-local LoopTPs = {}
-local LoopFlings = {}
-local FreezeTargets = {}
-local Admins = {}
-
--- ExecuteCommand do admin remoto
-local function ExecuteCommand(plr, text)
-    local args = string.split(text, " ")
-    local cmd = args[1]:lower()
-    local LocalChar = Players.LocalPlayer.Character
-    local LocalHRP = LocalChar and LocalChar:FindFirstChild("HumanoidRootPart")
-    local LocalHum = LocalChar and LocalChar:FindFirstChildOfClass("Humanoid")
-
-    if cmd == "/tp" then
-        local target = FindPlayerByPartial(args[2])
-        if target and target.Character and LocalHRP then
-            LocalHRP.CFrame = target.Character.PrimaryPart.CFrame
-        end
-
-    elseif cmd == "/looptp" then
-        local target = FindPlayerByPartial(args[2])
-        if target then
-            LoopTPs[Players.LocalPlayer] = target
-        end
-
-    elseif cmd == "/unlooptp" then
-        LoopTPs[Players.LocalPlayer] = nil
-
-    elseif cmd == "/fling" then
-        local target = FindPlayerByPartial(args[2])
-        if target then
-            flingActive = true
-            task.spawn(function() SkidFling(target) end)
-        end
-
-    elseif cmd == "/unfling" then
-        flingActive = false
-
-    elseif cmd == "/loopfling" then
-        local target = FindPlayerByPartial(args[2])
-        if target then
-            LoopFlings[Players.LocalPlayer] = target
-        end
-
-    elseif cmd == "/unloopfling" then
-        LoopFlings[Players.LocalPlayer] = nil
-
-    elseif cmd == "/view" then
-        local target = FindPlayerByPartial(args[2])
-        if target and target.Character then
-            workspace.CurrentCamera.CameraSubject = target.Character:FindFirstChildWhichIsA("Humanoid")
-        end
-
-    elseif cmd == "/unview" then
-        if LocalHum then
-            workspace.CurrentCamera.CameraSubject = LocalHum
-        end
-
-    elseif cmd == "/freeze" then
-        local target = FindPlayerByPartial(args[2])
-        if target then
-            FreezeTargets[target] = true
-        end
-
-    elseif cmd == "/unfreeze" then
-        local target = FindPlayerByPartial(args[2])
-        if target then
-            FreezeTargets[target] = nil
-        end
-
-    elseif cmd == "/sit" then
-        local target = FindPlayerByPartial(args[2])
-        if target and target.Character then
-            local Hum = target.Character:FindFirstChildOfClass("Humanoid")
-            if Hum then
-                Hum.Sit = true
-            end
-        end
-
-    elseif cmd == "/unsit" then
-        local target = FindPlayerByPartial(args[2])
-        if target and target.Character then
-            local Hum = target.Character:FindFirstChildOfClass("Humanoid")
-            if Hum then
-                Hum.Sit = false
-            end
-        end
-
-    elseif cmd == "/speed" then
-        local target = FindPlayerByPartial(args[2])
-        if target and target.Character then
-            local Hum = target.Character:FindFirstChildOfClass("Humanoid")
-            if Hum then
-                Hum.WalkSpeed = tonumber(args[3]) or 16
-            end
-        end
-
-    elseif cmd == "/jump" then
-        local target = FindPlayerByPartial(args[2])
-        if target and target.Character then
-            local Hum = target.Character:FindFirstChildOfClass("Humanoid")
-            if Hum then
-                Hum.JumpPower = tonumber(args[3]) or 50
-            end
-        end
-
-    elseif cmd == "/knockback" then
-        local target = FindPlayerByPartial(args[2])
-        if target and target.Character then
-            local HRP = target.Character:FindFirstChild("HumanoidRootPart")
-            if HRP then
-                HRP.Velocity = Vector3.new(0,50,0)
-            end
-        end
-
-    elseif cmd == "/explode" then
-        local target = FindPlayerByPartial(args[2])
-        if target and target.Character then
-            local HRP = target.Character:FindFirstChild("HumanoidRootPart")
-            if HRP then
-                local explosion = Instance.new("Explosion")
-                explosion.Position = HRP.Position
-                explosion.BlastRadius = 10
-                explosion.BlastPressure = 500000
-                explosion.Parent = workspace
-            end
-        end
-
-    elseif cmd == "/launch" then
-        local target = FindPlayerByPartial(args[2])
-        if target and target.Character then
-            local HRP = target.Character:FindFirstChild("HumanoidRootPart")
-            if HRP then
-                HRP.Velocity = Vector3.new(0,200,0)
-            end
-        end
-
-    elseif cmd == "/teleportall" then
-        local target = FindPlayerByPartial(args[2])
-        if target and target.Character and LocalHRP then
-            for _, p in pairs(Players:GetPlayers()) do
-                if p.Character and p ~= Players.LocalPlayer then
-                    p.Character:SetPrimaryPartCFrame(LocalHRP.CFrame)
-                end
-            end
-        end
-    end
-end
-
--- Loop contínuo para LoopTP, LoopFling e Freeze
-RunService.Heartbeat:Connect(function()
-    local LocalChar = Players.LocalPlayer.Character
-    local LocalHRP = LocalChar and LocalChar:FindFirstChild("HumanoidRootPart")
-
-    for plr, target in pairs(LoopTPs) do
-        if LocalHRP and target.Character then
-            LocalHRP.CFrame = target.Character.PrimaryPart.CFrame
-        end
-    end
-
-    for plr, target in pairs(LoopFlings) do
-        if target then
-            task.spawn(function() SkidFling(target) end)
-        end
-    end
-
-    for target,_ in pairs(FreezeTargets) do
-        if target.Character then
-            local HRP = target.Character:FindFirstChild("HumanoidRootPart")
-            local Hum = target.Character:FindFirstChildOfClass("Humanoid")
-            if HRP and Hum then
-                HRP.Velocity = Vector3.new()
-                Hum.PlatformStand = true
-            end
-        end
-    end
-end)
-
-
-
-
--- Registrar comando admin
-RegisterCommand("modrank", function(targetName)
-    local plr = FindPlayerByPartial(targetName)
-    if not plr then return end
-
-    Admins[plr] = true
-    sendMessage("[🛡️] Player Was Been Sucessfully Ranked. (Rank: Moderator")
-end, {desc="Dar admin para um jogador"})
-
--- Evento que escuta mensagens do chat
-TextChatService.MessageReceived:Connect(function(msg)
-    if not Admins then return end -- ou outra condição se quiser monitorar exploits
-    local speaker = msg.TextSource and Players:GetPlayerByUserId(msg.TextSource.UserId)
-    if speaker and Admins[speaker] then
-        ExecuteCommand(speaker, msg.Text)
-    end
-end)
-
-
-
-
-
-
-
-
 
 RegisterCommand("tp", function(target)
     local t = FindPlayerByPartial(target)
@@ -1098,11 +831,8 @@ RegisterCommand("tp", function(target)
         LocalPlayer.Character:PivotTo(t.Character.HumanoidRootPart.CFrame)
     end
 end, {desc="Teleporta até o player alvo", usage="tp <player>"})
+
 RegisterAlias("to","tp")
-
-
-
-
 
 RegisterCommand("goto", function(target)
     local t = FindPlayerByPartial(target)
@@ -1110,11 +840,6 @@ RegisterCommand("goto", function(target)
         LocalPlayer.Character:PivotTo(t.Character.HumanoidRootPart.CFrame + Vector3.new(0,3,0))
     end
 end, {desc="Vai até o player alvo", usage="goto <player>"})
-RegisterAlias("to","goto")
-
-
-
-
 
 RegisterCommand("bring", function(target)
     local t = FindPlayerByPartial(target)
@@ -1122,10 +847,8 @@ RegisterCommand("bring", function(target)
         t.Character:PivotTo(LocalPlayer.Character.HumanoidRootPart.CFrame + Vector3.new(0,3,0))
     end
 end, {desc="Traz o player alvo até você", usage="bring <player>"})
+
 RegisterAlias("puxar","bring")
-
-
-
 
 RegisterCommand("rejoin", function()
     local placeId, jobId = game.PlaceId, game.JobId
@@ -1133,10 +856,8 @@ RegisterCommand("rejoin", function()
         TeleportService:TeleportToPlaceInstance(placeId, jobId, LocalPlayer)
     end
 end, {desc="Reentrar no mesmo servidor"})
+
 RegisterAlias("rj","rejoin")
-
-
-
 
 RegisterCommand("pt", function()
     local tool = Instance.new("Tool")
@@ -1153,9 +874,8 @@ RegisterCommand("pt", function()
     end)
     tool.Parent = LocalPlayer.Backpack
 end, {desc="Cria ferramenta de teleport por clique"})
+
 RegisterAlias("tptool","pt")
-
-
 
 RegisterCommand("unpt", function()
     local bp = LocalPlayer:FindFirstChild("Backpack")
@@ -1163,37 +883,35 @@ RegisterCommand("unpt", function()
     if bp and bp:FindFirstChild("TP Tool") then bp["TP Tool"]:Destroy() end
     if ch and ch:FindFirstChild("TP Tool") then ch["TP Tool"]:Destroy() end
 end, {desc="Remove a TP Tool"})
+
 RegisterAlias("untptool","unpt")
-
-
-
 
 RegisterCommand("puxartudo", function()
     for _, v in pairs(game.ReplicatedStorage:GetDescendants()) do
-        if v:IsA("Tool") then v.Parent = LocalPlayer.Backpack end
+        if v:IsA("Tool") then
+            v.Parent = LocalPlayer.Backpack
+        end
     end
     for _, g in pairs(game.Teams:GetDescendants()) do
-        if g:IsA("Tool") then g.Parent = LocalPlayer.Backpack end
+        if g:IsA("Tool") then
+            g.Parent = LocalPlayer.Backpack
+        end
     end
 end, {desc="Puxa todas as Tools de ReplicatedStorage/Teams"})
+
 RegisterAlias("giveall","puxartudo")
 
-
-
-
-
 -- ==== PROFILE (expandido estilo Adonis) ====
+
 RegisterCommand("profile", function(target)
     local t = FindPlayerByPartial(target)
     if not t then return end
-
     local teamName = t.Team and t.Team.Name or "None"
     local char = t.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     local pos = hrp and hrp.Position
-    local dist = (hrp and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")) 
-        and (hrp.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude or nil
+    local dist = (hrp and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")) and (hrp.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude or nil
 
     local info = {
         "== PROFILE ==",
@@ -1212,41 +930,35 @@ RegisterCommand("profile", function(target)
         "FriendStatus (com você): "..t:GetFriendStatus(LocalPlayer),
     }
 
-    -- tentar pegar grupos
     pcall(function()
         local groups = t:GetGroups()
         table.insert(info, "Groups: "..#groups.." grupos")
         for i,g in ipairs(groups) do
-            if i > 5 then break end -- limitar a 5 grupos
+            if i > 5 then break end
             table.insert(info, string.format(" - %s (%s)", g.Name, g.RankName))
         end
     end)
 
-    -- mostrar
     print(table.concat(info, "\n"))
 end, {desc="Inspeciona um jogador (detalhes completos)", usage="profile <player>"})
+
 RegisterAlias("inspect","profile")
-
-
-
 
 RegisterCommand("who", function()
     local names = {}
-    for _,p in ipairs(Players:GetPlayers()) do table.insert(names, p.Name) end
+    for _,p in ipairs(Players:GetPlayers()) do
+        table.insert(names, p.Name)
+    end
     print("Players ("..#names.."):", table.concat(names, ", "))
 end, {desc="Lista jogadores online"})
+
 RegisterAlias("players","who")
-
-
 
 RegisterCommand("serverinfo", function()
     print(("PlaceId: %d | JobId: %s | Players: %d"):format(game.PlaceId, game.JobId, #Players:GetPlayers()))
 end, {desc="Info do servidor atual"})
+
 RegisterAlias("sinfo","serverinfo")
-
-
-
-
 
 RegisterCommand("seatbreak", function()
     local ch = LocalPlayer.Character
@@ -1255,11 +967,14 @@ RegisterCommand("seatbreak", function()
     if not hum or not hum.SeatPart then return end
     local seat = hum.SeatPart
     local mdl = seat:FindFirstAncestorOfClass("Model")
-    if mdl then mdl:Destroy() else seat:Destroy() end
+    if mdl then
+        mdl:Destroy()
+    else
+        seat:Destroy()
+    end
 end, {desc="Destrói o modelo do assento atual (invis improvisado)"} )
+
 RegisterAlias("invis","seatbreak")
-
-
 
 RegisterCommand("speed", function(val)
     val = tonumber(val)
@@ -1267,9 +982,8 @@ RegisterCommand("speed", function(val)
         LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = val
     end
 end, {desc="Define a velocidade do player", usage="speed <número>"})
+
 RegisterAlias("velocity","speed")
-
-
 
 RegisterCommand("jumppower", function(val)
     val = tonumber(val)
@@ -1277,48 +991,51 @@ RegisterCommand("jumppower", function(val)
         LocalPlayer.Character:FindFirstChildOfClass("Humanoid").JumpPower = val
     end
 end, {desc="Define a altura do pulo", usage="jump <número>"})
-RegisterAlias("jumpheight","jumppower")
-
-
 
 RegisterCommand("sit", function()
     local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-    if hum then hum.Sit = true end
+    if hum then
+        hum.Sit = true
+    end
 end, {desc="Faz seu personagem sentar"})
-
 
 RegisterCommand("reset", function()
     local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-    if hum then hum.Health = 0 end
+    if hum then
+        hum.Health = 0
+    end
 end, {desc="Reseta seu personagem"})
-RegisterAlias("re","reset")
-RegisterAlias("respawn","reset")
 
+RegisterAlias("re","reset")
 
 RegisterCommand("heal", function(target)
     local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-    if hum then hum.Health = hum.MaxHealth end
+    if hum then
+        hum.Health = hum.MaxHealth
+    end
 end, {desc="Cura seu personagem"})
-
 
 RegisterCommand("noclip", function()
     local char = LocalPlayer.Character
     if not char then return end
     for _,v in ipairs(char:GetDescendants()) do
-        if v:IsA("BasePart") then v.CanCollide = false end
+        if v:IsA("BasePart") then
+            v.CanCollide = false
+        end
     end
 end, {desc="Ativa noclip temporário"})
-RegisterAlias("phase","noclip")
 
 RegisterCommand("unnoclip", function()
     local char = LocalPlayer.Character
     if not char then return end
     for _,v in ipairs(char:GetDescendants()) do
-        if v:IsA("BasePart") then v.CanCollide = true end
+        if v:IsA("BasePart") then
+            v.CanCollide = true
+        end
     end
 end, {desc="Desativa noclip"})
-RegisterAlias("clip","unnoclip")
 
+RegisterAlias("clip","unnoclip")
 
 RegisterCommand("cmds", function()
     print("📜 Comandos:")
@@ -1330,15 +1047,132 @@ end, {desc="Lista comandos disponíveis"})
 
 RegisterCommand("aliases", function()
     print("📜 Aliases:")
-    for a,_ in pairs(Aliases) do print(Prefix..a) end
+    for a,_ in pairs(Aliases) do
+        print(Prefix..a)
+    end
 end, {desc="Lista aliases"})
+
 RegisterAlias("alias","aliases")
-
-
 
 RegisterCommand("prefix", function(arg)
     Prefix = arg
 end, {desc="Prefixo utilizado nos comandos", usage="prefix <prefix>"})
+
+-- Comando para alterar o Field of View (FOV) da câmera
+RegisterCommand("fov", function(val)
+    local num = tonumber(val)
+    if num and num > 0 then
+        workspace.CurrentCamera.FieldOfView = num
+        print("Field of View alterado para " .. num)
+    else
+        print("Uso correto: fov <número>")
+    end
+end, {desc="Altera o FOV da câmera", usage="fov <número>"})
+
+-- Comando para resetar o FOV ao padrão 70
+RegisterCommand("resetfov", function()
+    workspace.CurrentCamera.FieldOfView = 70
+    print("FOV resetado ao padrão (70)")
+end, {desc="Reseta o FOV ao padrão"})
+
+-- Comando para ativar/desativar modo "click teleport" com a tecla E
+RegisterCommand("clicktp", function()
+    local UserInputService = game:GetService("UserInputService")
+    local clickTpActive = false
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    if _G.ClickTpConnection then
+        _G.ClickTpConnection:Disconnect()
+        _G.ClickTpConnection = nil
+        print("Click Teleport desativado")
+        return
+    end
+
+    _G.ClickTpConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if input.KeyCode == Enum.KeyCode.E then
+            local mouse = LocalPlayer:GetMouse()
+            if mouse and mouse.Hit then
+                hrp.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0,3,0))
+                print("Teletransportado para posição clicada")
+            end
+        end
+    end)
+    print("Click Teleport ativado: pressione E para usar")
+end, {desc="Ativa/Desativa click teleport usando tecla E"})
+
+-- Comando para destruir todos os objetos da workspace que são BaseParts (dangeroso!)
+RegisterCommand("clearparts", function()
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            obj:Destroy()
+        end
+    end
+    print("Todos BaseParts da workspace foram destruídos")
+end, {desc="Destrói todos BaseParts da workspace (cuidado!)"})
+
+-- Comando para travar/destravar câmera em primeira pessoa
+RegisterCommand("fp", function()
+    local cam = workspace.CurrentCamera
+    if cam.CameraType == Enum.CameraType.Custom then
+        cam.CameraType = Enum.CameraType.LockFirstPerson
+        print("Câmera travada em primeira pessoa")
+    else
+        cam.CameraType = Enum.CameraType.Custom
+        print("Câmera destravada")
+    end
+end, {desc="Trava/destrava câmera em primeira pessoa"})
+
+-- Comando para ativar/desativar radar de jogadores próximos (exibe nomes na tela)
+RegisterCommand("radar", function()
+    if _G.RadarGui then
+        _G.RadarGui:Destroy()
+        _G.RadarGui = nil
+        print("Radar desativado")
+        return
+    end
+
+    local ScreenGui = Instance.new("ScreenGui")
+    local textLabel = Instance.new("TextLabel")
+    ScreenGui.Name = "RadarGui"
+    ScreenGui.Parent = game.CoreGui
+
+    textLabel.Size = UDim2.new(0, 200, 0, 300)
+    textLabel.Position = UDim2.new(1, -210, 0, 10)
+    textLabel.BackgroundColor3 = Color3.new(0,0,0)
+    textLabel.BackgroundTransparency = 0.5
+    textLabel.TextColor3 = Color3.new(1,1,1)
+    textLabel.TextXAlignment = Enum.TextXAlignment.Left
+    textLabel.TextYAlignment = Enum.TextYAlignment.Top
+    textLabel.Font = Enum.Font.SourceSansBold
+    textLabel.TextSize = 14
+    textLabel.Parent = ScreenGui
+
+    _G.RadarGui = ScreenGui
+
+    game:GetService("RunService").RenderStepped:Connect(function()
+        if not _G.RadarGui then return end
+        local namesText = "Radar:\n"
+        local localPos = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character.HumanoidRootPart.Position
+        if localPos then
+            for _, p in pairs(game:GetService("Players"):GetPlayers()) do
+                if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                    local pos = p.Character.HumanoidRootPart.Position
+                    local dist = (pos - localPos).Magnitude
+                    if dist < 100 then
+                        namesText = namesText .. string.format("%s (%.1f)", p.Name, dist) .. "\n"
+                    end
+                end
+            end
+        end
+        textLabel.Text = namesText
+    end)
+
+    print("Radar ativado (jogadores próximos mostrados)")
+end, {desc="Ativa/desativa radar simples de jogadores próximos"})
+
 
 -- ===== Admin Toggle (UI icon lifecycle) =====
 sections.Section3:AddToggle({
@@ -1356,11 +1190,11 @@ sections.Section3:AddToggle({
                 LocalPlayer.PlayerGui.AdminPanel.Enabled = true
             end
             if library and library.SendNotification then
-                library:SendNotification("✅ Admin ativado", 3, Color3.new(0,1,0))
+                library:SendNotification("✅ Admin ativado", 3, Color3.new(0, 1, 0))
             end
         else
             if library and library.SendNotification then
-                library:SendNotification("❌ Admin desativado", 3, Color3.new(1,0,0))
+                library:SendNotification("❌ Admin desativado", 3, Color3.new(1, 0, 0))
             end
             if LocalPlayer.PlayerGui and LocalPlayer.PlayerGui:FindFirstChild("AdminPanel") then
                 LocalPlayer.PlayerGui.AdminPanel.Enabled = false
@@ -1368,6 +1202,10 @@ sections.Section3:AddToggle({
         end
     end
 })
+print("Sistema de admin carregado.")
+
+
+
 
 
 
@@ -1482,7 +1320,7 @@ RunService.RenderStepped:Connect(function()
 	end
 end)
 
-
+print("Sistema de monitoramento carregado.")
 
 
 
@@ -1579,7 +1417,7 @@ local function createESP(player)
 	box.Visible = false
 
 	local tracer = Drawing.new("Line")
-	tracer.Thickness = 2
+	tracer.Thickness = 1.5
 	tracer.Color = Color3.new(1,1,1)
 	tracer.Visible = false
 
@@ -1813,14 +1651,6 @@ local function createESP(player)
 		end
 	end)
 
-	-- remove instantâneo na morte
-	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-	if humanoid then
-		humanoid.Died:Connect(function()
-			removeESP(player)
-		end)
-	end
-
 	espElements[player] = {
 		box = box,
 		tracer = tracer,
@@ -1831,37 +1661,51 @@ local function createESP(player)
 		skeletonLines = skeletonLines,
 		conn = conn
 	}
-end
 
-for _, plr in ipairs(Players:GetPlayers()) do
-	if plr ~= localPlayer and plr.Character then
-		local hum = plr.Character:FindFirstChildOfClass("Humanoid")
-		if hum then
-			createESP(plr)
-		else
-			plr.CharacterAdded:Connect(function(char)
-				char:WaitForChild("Humanoid")
-				createESP(plr)
-			end)
-		end
-	else
-		plr.CharacterAdded:Connect(function(char)
-			char:WaitForChild("Humanoid")
-			createESP(plr)
+	-- limpa quando morrer
+	local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	if hum then
+		hum.Died:Connect(function()
+			removeESP(player)
 		end)
 	end
 end
 
-Players.PlayerAdded:Connect(function(plr)
-	plr.CharacterAdded:Connect(function(char)
+-- === Correção principal: sempre recriar ESP no respawn ===
+local function setupPlayer(plr)
+	if plr == localPlayer then return end
+
+	local function onCharacterAdded(char)
 		char:WaitForChild("Humanoid")
 		createESP(plr)
-	end)
-end)
 
+		-- remove instantâneo na morte
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if hum then
+			hum.Died:Connect(function()
+				removeESP(plr)
+			end)
+		end
+	end
+
+	if plr.Character then
+		onCharacterAdded(plr.Character)
+	end
+
+	plr.CharacterAdded:Connect(onCharacterAdded)
+end
+
+for _, plr in ipairs(Players:GetPlayers()) do
+	setupPlayer(plr)
+end
+
+Players.PlayerAdded:Connect(setupPlayer)
 Players.PlayerRemoving:Connect(function(p)
 	removeESP(p)
 end)
+
+print("Sistema de visuals carregado.")
+
 
 
 
@@ -1962,7 +1806,7 @@ RunService.RenderStepped:Connect(function()
 	aim_at_target()
 end)
 
-
+print("Sistema de Aimfov carregado.")
 
 
 
@@ -2520,7 +2364,7 @@ local tpLoopConnection
 
 sections.Section5:AddToggle({
     enabled = true,
-    text = "Loop TP",
+    text = "Seguir",
     flag = "LoopTP",
     tooltip = "Loop TP",
     risky = false,
@@ -2572,6 +2416,14 @@ sections.Section5:AddToggle({
 
 
 
+
+
+
+
+
+
+
+
 sections.Section1:AddSeparator({
 	text = "GGZERA MENU - Feito por GomesDev."
 })
@@ -2596,21 +2448,17 @@ end
 
 
 
-
-
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 
-local IYMouse = player:GetMouse()
 local FLYING = false
 local QEfly = true
 local flySpeed = 5
 local flyKeyDown, flyKeyUp
-
--- mover variables para escopo externo para podermos limpar em stopFly
 local bodyGyro = nil
 local bodyVelocity = nil
 local noclipConnection = nil
@@ -2619,248 +2467,236 @@ local CONTROL = {F = 0, B = 0, L = 0, R = 0, Q = 0, E = 0}
 local targetVelocity = Vector3.zero
 local currentVelocity = Vector3.zero
 
+-- IDs das animações (substitua pelos seus)
+local runAnimId = "rbxassetid://86655743171657"
+local idleAnimId = "rbxassetid://121655148084031"
+local humanoid = nil
+local runAnimation, idleAnimation = nil, nil
+local runTrack, idleTrack = nil, nil
+local AnimationPriority = Enum.AnimationPriority
+
 function getRoot(char)
-	return char and char:FindFirstChild("HumanoidRootPart")
+    return char and char:FindFirstChild("HumanoidRootPart")
 end
 
 function smoothVelocity(bv, target)
-	if bv and bv.Parent then
-		local tweenInfo = TweenInfo.new(0.12, Enum.EasingStyle.Sine, Enum.EasingDirection.Out) -- mais responsivo
-		local goal = {Velocity = target}
-		local tween = TweenService:Create(bv, tweenInfo, goal)
-		tween:Play()
-	end
+    if bv and bv.Parent then
+        local tweenInfo = TweenInfo.new(0.12, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+        local goal = {Velocity = target}
+        local tween = TweenService:Create(bv, tweenInfo, goal)
+        tween:Play()
+    end
 end
 
--- Ativa noclip
 local function startNoclip()
-	if noclipConnection then noclipConnection:Disconnect() noclipConnection = nil end
-	noclipConnection = RunService.Stepped:Connect(function()
-		local char = player.Character
-		if char then
-			for _, part in ipairs(char:GetDescendants()) do
-				if part:IsA("BasePart") and part.CanCollide then
-					-- setar false somente se for true (evita overhead)
-					part.CanCollide = false
-				end
-			end
-		end
-	end)
+    if noclipConnection then
+        noclipConnection:Disconnect()
+        noclipConnection = nil
+    end
+    noclipConnection = RunService.Stepped:Connect(function()
+        local char = player.Character
+        if char then
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") and part.CanCollide then
+                    part.CanCollide = false
+                end
+            end
+        end
+    end)
 end
 
--- Desativa noclip e tenta restaurar colisões (não perfeito se partes mudaram)
 local function stopNoclip()
-	if noclipConnection then
-		noclipConnection:Disconnect()
-		noclipConnection = nil
-	end
-	-- restaura colisão somente se o personagem existir
-	local char = player.Character
-	if char then
-		for _, part in ipairs(char:GetDescendants()) do
-			if part:IsA("BasePart") then
-				pcall(function() part.CanCollide = true end)
-			end
-		end
-	end
+    if noclipConnection then
+        noclipConnection:Disconnect()
+        noclipConnection = nil
+    end
+    local char = player.Character
+    if char then
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                pcall(function() part.CanCollide = true end)
+            end
+        end
+    end
+end
+
+local function setupAnimations()
+    if not humanoid then return end
+    runAnimation = Instance.new("Animation")
+    runAnimation.AnimationId = runAnimId
+    idleAnimation = Instance.new("Animation")
+    idleAnimation.AnimationId = idleAnimId
+    runTrack = humanoid:LoadAnimation(runAnimation)
+    idleTrack = humanoid:LoadAnimation(idleAnimation)
+    runTrack.Priority = AnimationPriority.Action
+    idleTrack.Priority = AnimationPriority.Action
+end
+
+local function updateAnimation()
+    if not runTrack or not idleTrack then return end
+    local isMoving = (CONTROL.F ~= 0 or CONTROL.B ~= 0 or CONTROL.L ~= 0 or CONTROL.R ~= 0 or CONTROL.Q ~= 0 or CONTROL.E ~= 0)
+    if isMoving then
+        if idleTrack.IsPlaying then idleTrack:Stop() end
+        if not runTrack.IsPlaying then runTrack:Play() end
+    else
+        if runTrack.IsPlaying then runTrack:Stop() end
+        if not idleTrack.IsPlaying then idleTrack:Play() end
+    end
 end
 
 function startSmoothFly(vfly)
-	-- espera personagem pronto
-	repeat task.wait() until player.Character and getRoot(player.Character) and player.Character:FindFirstChildOfClass("Humanoid") and IYMouse
+    repeat task.wait() until player.Character and getRoot(player.Character) and player.Character:FindFirstChildOfClass("Humanoid")
 
-	-- desconecta binds antigos caso existam
-	if flyKeyDown then flyKeyDown:Disconnect() flyKeyDown = nil end
-	if flyKeyUp then flyKeyUp:Disconnect() flyKeyUp = nil end
+    if flyKeyDown then flyKeyDown:Disconnect() flyKeyDown = nil end
+    if flyKeyUp then flyKeyUp:Disconnect() flyKeyUp = nil end
+    if bodyGyro then pcall(function() bodyGyro:Destroy() end) bodyGyro = nil end
+    if bodyVelocity then pcall(function() bodyVelocity:Destroy() end) bodyVelocity = nil end
 
-	-- garante destruir qualquer body existente antes de criar novos
-	if bodyGyro then
-		pcall(function() bodyGyro:Destroy() end)
-		bodyGyro = nil
-	end
-	if bodyVelocity then
-		pcall(function() bodyVelocity:Destroy() end)
-		bodyVelocity = nil
-	end
+    local char = player.Character
+    local root = getRoot(char)
+    humanoid = char:FindFirstChildOfClass("Humanoid")
+    if not root or not humanoid then return end
 
-	local char = player.Character
-	local root = getRoot(char)
-	local humanoid = char:FindFirstChildOfClass("Humanoid")
-	if not root or not humanoid then return end
+    setupAnimations()
 
-	-- cria e guarda as referências externamente
-	bodyGyro = Instance.new("BodyGyro")
-	bodyGyro.P = 5e3
-	bodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-	bodyGyro.CFrame = root.CFrame
-	bodyGyro.Parent = root
+    bodyGyro = Instance.new("BodyGyro")
+    bodyGyro.P = 5e3
+    bodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+    bodyGyro.CFrame = root.CFrame
+    bodyGyro.Parent = root
 
-	bodyVelocity = Instance.new("BodyVelocity")
-	bodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-	bodyVelocity.Velocity = Vector3.zero
-	bodyVelocity.Parent = root
+    bodyVelocity = Instance.new("BodyVelocity")
+    bodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+    bodyVelocity.Velocity = Vector3.zero
+    bodyVelocity.Parent = root
 
-	if not vfly and humanoid then
-		humanoid.PlatformStand = true
-	end
+    if not vfly and humanoid then humanoid.PlatformStand = true end
 
-	-- ativa noclip quando o fly inicia
-	startNoclip()
+    startNoclip()
+    FLYING = true
 
-	FLYING = true
-	task.spawn(function()
-		while FLYING do
-			task.wait()
-			local direction =
-				(Camera.CFrame.LookVector * (CONTROL.F + CONTROL.B)) +
-				((Camera.CFrame * CFrame.new(CONTROL.L + CONTROL.R, (CONTROL.Q + CONTROL.E) * 0.2, 0)).Position - Camera.CFrame.Position)
+    task.spawn(function()
+        while FLYING do
+            task.wait()
+            local direction = (Camera.CFrame.LookVector * (CONTROL.F + CONTROL.B)) + ((Camera.CFrame * CFrame.new(CONTROL.L + CONTROL.R, (CONTROL.Q + CONTROL.E) * 0.2, 0)).Position - Camera.CFrame.Position)
+            if direction.Magnitude > 0 then
+                targetVelocity = direction.Unit * flySpeed
+            else
+                targetVelocity = Vector3.zero
+            end
 
-			if direction.Magnitude > 0 then
-				targetVelocity = direction.Unit * flySpeed
-			else
-				targetVelocity = Vector3.zero
-			end
+            local maxTilt = 30
+            local tiltAmount = (CONTROL.F + CONTROL.B) * maxTilt * 0.02
+            smoothVelocity(bodyVelocity, targetVelocity)
+            if bodyGyro and bodyGyro.Parent then
+                bodyGyro.CFrame = workspace.CurrentCamera.CFrame * CFrame.Angles(math.rad(-tiltAmount), 0, 0)
+            end
 
-			local maxTilt = 30
-			local tiltAmount = (CONTROL.F + CONTROL.B) * maxTilt * 0.02
+            updateAnimation()
+        end
 
-			-- usa função que verifica existencia
-			smoothVelocity(bodyVelocity, targetVelocity)
-			if bodyGyro and bodyGyro.Parent then
-				bodyGyro.CFrame = workspace.CurrentCamera.CFrame * CFrame.Angles(math.rad(-tiltAmount), 0, 0)
-			end
-		end
+        if runTrack and runTrack.IsPlaying then runTrack:Stop() end
+        if idleTrack and idleTrack.IsPlaying then idleTrack:Stop() end
+        if bodyVelocity and bodyVelocity.Parent then pcall(function() bodyVelocity:Destroy() end) end
+        bodyVelocity = nil
+        if bodyGyro and bodyGyro.Parent then pcall(function() bodyGyro:Destroy() end) end
+        bodyGyro = nil
+        if humanoid then humanoid.PlatformStand = false end
+    end)
 
-		-- Ao sair do loop, destrói com checagem (stopFly pode já ter destruído)
-		if bodyVelocity and bodyVelocity.Parent then
-			pcall(function() bodyVelocity:Destroy() end)
-		end
-		bodyVelocity = nil
+    flyKeyDown = player:GetMouse().KeyDown:Connect(function(key)
+        key = key:lower()
+        if key == 'w' then CONTROL.F = 1 end
+        if key == 's' then CONTROL.B = -1 end
+        if key == 'a' then CONTROL.L = -1 end
+        if key == 'd' then CONTROL.R = 1 end
+        if QEfly and key == 'e' then CONTROL.Q = 1 end
+        if QEfly and key == 'q' then CONTROL.E = -1 end
+        pcall(function() Camera.CameraType = Enum.CameraType.Track end)
+    end)
 
-		if bodyGyro and bodyGyro.Parent then
-			pcall(function() bodyGyro:Destroy() end)
-		end
-		bodyGyro = nil
-
-		if humanoid then
-			humanoid.PlatformStand = false
-		end
-	end)
-
-	-- binds
-	flyKeyDown = IYMouse.KeyDown:Connect(function(key)
-		key = key:lower()
-		if key == 'w' then CONTROL.F = 1 end
-		if key == 's' then CONTROL.B = -1 end
-		if key == 'a' then CONTROL.L = -1 end
-		if key == 'd' then CONTROL.R = 1 end
-		if QEfly and key == 'e' then CONTROL.Q = 1 end
-		if QEfly and key == 'q' then CONTROL.E = -1 end
-		pcall(function() Camera.CameraType = Enum.CameraType.Track end)
-	end)
-
-	flyKeyUp = IYMouse.KeyUp:Connect(function(key)
-		key = key:lower()
-		if key == 'w' then CONTROL.F = 0 end
-		if key == 's' then CONTROL.B = 0 end
-		if key == 'a' then CONTROL.L = 0 end
-		if key == 'd' then CONTROL.R = 0 end
-		if key == 'e' then CONTROL.Q = 0 end
-		if key == 'q' then CONTROL.E = 0 end
-	end)
+    flyKeyUp = player:GetMouse().KeyUp:Connect(function(key)
+        key = key:lower()
+        if key == 'w' then CONTROL.F = 0 end
+        if key == 's' then CONTROL.B = 0 end
+        if key == 'a' then CONTROL.L = 0 end
+        if key == 'd' then CONTROL.R = 0 end
+        if key == 'e' then CONTROL.Q = 0 end
+        if key == 'q' then CONTROL.E = 0 end
+    end)
 end
 
 function stopFly()
-	-- marca false para o loop interno terminar
-	FLYING = false
-
-	-- desconecta binds se existirem
-	if flyKeyDown then flyKeyDown:Disconnect() flyKeyDown = nil end
-	if flyKeyUp then flyKeyUp:Disconnect() flyKeyUp = nil end
-
-	-- desativa noclip imediatamente
-	stopNoclip()
-
-	-- destrói body movers explicitamente (caso o loop ainda não tenha destruído)
-	if bodyVelocity and bodyVelocity.Parent then
-		pcall(function() bodyVelocity:Destroy() end)
-	end
-	bodyVelocity = nil
-
-	if bodyGyro and bodyGyro.Parent then
-		pcall(function() bodyGyro:Destroy() end)
-	end
-	bodyGyro = nil
-
-	-- restaura humanoid e câmera
-	pcall(function()
-		local humanoid = player.Character and player.Character:FindFirstChildOfClass('Humanoid')
-		if humanoid then
-			humanoid.PlatformStand = false
-			humanoid.AutoRotate = true
-			-- força estado de getting up / running para devolução de controle
-			pcall(function() humanoid:ChangeState(Enum.HumanoidStateType.GettingUp) end)
-		end
-		Camera.CameraType = Enum.CameraType.Custom
-	end)
-
-	-- reset de controles pra não ficar preso em movimentos
-	CONTROL.F, CONTROL.B, CONTROL.L, CONTROL.R, CONTROL.Q, CONTROL.E = 0,0,0,0,0,0
-	targetVelocity = Vector3.zero
-	currentVelocity = Vector3.zero
+    FLYING = false
+    if flyKeyDown then flyKeyDown:Disconnect() flyKeyDown = nil end
+    if flyKeyUp then flyKeyUp:Disconnect() flyKeyUp = nil end
+    stopNoclip()
+    if bodyVelocity and bodyVelocity.Parent then pcall(function() bodyVelocity:Destroy() end) end
+    bodyVelocity = nil
+    if bodyGyro and bodyGyro.Parent then pcall(function() bodyGyro:Destroy() end) end
+    bodyGyro = nil
+    if runTrack and runTrack.IsPlaying then runTrack:Stop() end
+    if idleTrack and idleTrack.IsPlaying then idleTrack:Stop() end
+    pcall(function()
+        if humanoid then
+            humanoid.PlatformStand = false
+            humanoid.AutoRotate = true
+            humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+        end
+        Camera.CameraType = Enum.CameraType.Custom
+    end)
+    CONTROL.F, CONTROL.B, CONTROL.L, CONTROL.R, CONTROL.Q, CONTROL.E = 0, 0, 0, 0, 0, 0
+    targetVelocity = Vector3.zero
+    currentVelocity = Vector3.zero
 end
 
-
-
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-
-local noclipConnection
-local vflyEnabled = false
-
+-- Noclip helpers
 local function enableNoclip()
-	if noclipConnection then noclipConnection:Disconnect() end
-	noclipConnection = RunService.Stepped:Connect(function()
-		local char = player.Character
-		if char then
-			for _, part in ipairs(char:GetDescendants()) do
-				if part:IsA("BasePart") and part.CanCollide then
-					part.CanCollide = false
-				end
-			end
-		end
-	end)
+    if noclipConnection then noclipConnection:Disconnect() end
+    noclipConnection = RunService.Stepped:Connect(function()
+        local char = player.Character
+        if char then
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") and part.CanCollide then
+                    part.CanCollide = false
+                end
+            end
+        end
+    end)
 end
 
 local function disableNoclip()
-	if noclipConnection then
-		noclipConnection:Disconnect()
-		noclipConnection = nil
-	end
+    if noclipConnection then noclipConnection:Disconnect() noclipConnection = nil end
 end
 
+-- Fly toggle
+local vflyEnabled = false
 local function setFlyState(state)
-	vflyEnabled = state
-	if vflyEnabled then
-		enableNoclip()
-		startSmoothFly()
-	else
-		stopFly()
-		disableNoclip()
-	end
+    vflyEnabled = state
+    if vflyEnabled then
+        enableNoclip()
+        startSmoothFly()
+    else
+        stopFly()
+        disableNoclip()
+    end
 end
+
+
+
 
 -- Toggle de Fly (UI)
 sections.Section3:AddToggle({
-	enabled = true,
-	text = "Noclip",
-	flag = "Fly",
-	tooltip = "Noclip",
-	risky = true,
-	callback = function(state)
-		setFlyState(state)
-	end
+    enabled = true,
+    text = "Noclip",
+    flag = "Fly",
+    tooltip = "Noclip",
+    risky = true,
+    callback = function(state)
+        setFlyState(state)
+    end
 })
+
 
 
 RegisterCommand("fly", function()
@@ -2973,17 +2809,6 @@ sections.Section3:AddToggle({
         setClickFlingState(state)
     end
 })
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -3266,6 +3091,15 @@ local RPAnimations = {
     ["/morrer"] = 97524873576958,
     ["/apontar"] = 88764142128140,
     ["/mirar"] = 118139871934372,
+    ["/encostar"] = 125450186283254,
+    ["/lean"] = 117134385802437,
+    ["/gin"] = 117134385802437,
+    ["/whiskky"] = 117134385802437,
+    ["/sensualizar"] = 85312683743028,
+    ["/ainpapai"] = 104151027065011,
+    ["/nananinanão"] = 85811771512356,
+    ["/remexido"] = 77100135939123,
+    ["/tocar"] = 110978806315921,
     ["/parar"] = "stop"
 }
 
@@ -3311,16 +3145,41 @@ local function setupCharacter(char)
 end
 player.CharacterAdded:Connect(setupCharacter)
 
--- Callback do TextChatService
 TextChatService.OnIncomingMessage = function(msg)
-    if not rpModeEnabled then return end
-    if msg.TextSource and msg.TextSource.UserId == player.UserId then
-        local text = string.lower(msg.Text)
-        if RPAnimations[text] then
-            playAnim(RPAnimations[text])
+    -- mensagens de sistema ou sem texto não devem quebrar
+    if not msg or not msg.Text then
+        return nil
+    end
+
+    local src = msg.TextSource
+    local sender = src and Players:GetPlayerByUserId(src.UserId)
+    local content = msg.Text
+
+    -- só processa se for mensagem de player
+    if sender then
+        -- Admin commands
+        if AdminEnabled and content then
+            if sender == LocalPlayer then
+                ProcessMessage(sender, content)
+            end
+        end
+
+        -- RP Mode
+        if rpModeEnabled and sender == LocalPlayer and content then
+            local lowerText = string.lower(content)
+            if RPAnimations[lowerText] then
+                playAnim(RPAnimations[lowerText])
+            end
         end
     end
+
+    -- não altera a mensagem original → deixa o chat normal
+    return nil
 end
+
+
+
+
 
 -- Toggle geral "Modo RP"
 sections.Section3:AddToggle({
@@ -3346,144 +3205,182 @@ sections.Section3:AddToggle({
 
 
 
-
-
-
-
-
+-- ===== Invisibilidade estilo Infinite Yield com Toggle =====
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
+local Player = Players.LocalPlayer
+local IsInvis = false
+local InvisibleCharacter, Character
+local invisRunning = false
+local StoredCF
 
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoid = character:WaitForChild("Humanoid")
+-- Função principal: ativa invisibilidade
+local function TurnInvisible()
+    if invisRunning then return end
+    invisRunning = true
+    if IsInvis then return end
+    IsInvis = true
 
--- Variável que vai armazenar o ID digitado na TextBox
-local animationID = nil
-
--- Track da animação que vai tocar
-local currentTrack = nil
-
--- ===========================
--- TextBox
--- ===========================
-sections.Section3:AddBox({
-    enabled = true,
-    focused = true,
-    text = "Animation ID",
-    input = "Digite o ID da animação...",
-    flag = "AnimBox",
-    risky = false,
-    callback = function(v)
-        animationID = tonumber(v)
-        print("ID definido:", animationID)
+    Character = Player.Character
+    if not Character or not Character.Parent then
+        invisRunning = false
+        return
     end
-})
 
--- ===========================
--- Botão
--- ===========================
-sections.Section3:AddButton({
-    enabled = true,
-    text = "Tocar Animação",
-    flag = "PlayAnim",
-    tooltip = "Toca a animação e para se o jogador se mexer",
-    risky = false,
-    confirm = false,
-    callback = function()
-        if not animationID then
-            warn("Nenhum ID definido!")
-            return
-        end
+    Character.Archivable = true
+    local Clone = Character:Clone()
+    InvisibleCharacter = Clone
+    InvisibleCharacter.Parent = game:GetService("Lighting")
+    InvisibleCharacter.Name = ""
+    InvisibleCharacter.HumanoidRootPart.CFrame = Character.HumanoidRootPart.CFrame
 
-        -- Para qualquer animação anterior
-        if currentTrack and currentTrack.IsPlaying then
-            currentTrack:Stop()
-        end
+    StoredCF = Character.HumanoidRootPart.CFrame
+    Character.Parent = nil
 
-        -- Cria a animação
-        local anim = Instance.new("Animation")
-        anim.AnimationId = "rbxassetid://" .. animationID
-        currentTrack = humanoid:LoadAnimation(anim)
-        currentTrack:Play()
+    Player.Character = InvisibleCharacter
 
-        -- Conecta verificação de movimento
-        local conn
-        conn = RunService.RenderStepped:Connect(function()
-            if humanoid.MoveDirection.Magnitude > 0 then
-                if currentTrack.IsPlaying then
-                    currentTrack:Stop()
-                    print("Jogador se mexeu, animação parada.")
-                end
-                conn:Disconnect()
+    -- Reatacha câmera igual Infinite Yield
+    local cam = workspace.CurrentCamera
+    cam.CameraType = Enum.CameraType.Scriptable
+    task.wait(0.2)
+    cam.CameraSubject = InvisibleCharacter:FindFirstChildWhichIsA("Humanoid")
+    cam.CameraType = Enum.CameraType.Custom
+
+    -- Checagem de void
+    local Void = workspace.FallenPartsDestroyHeight
+    local invisFix
+    invisFix = RunService.Stepped:Connect(function()
+        pcall(function()
+            local posY = Player.Character.HumanoidRootPart.Position.Y
+            local isInteger = tostring(Void):find('-') and true or false
+            if (isInteger and posY <= Void) or (not isInteger and posY >= Void) then
+                Respawn()
             end
         end)
-    end
-})
+    end)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-local Players = game:GetService("Players")
-
-local function destroySeatParent()
-    local char = LocalPlayer.Character
-    if not char then return warn("❌ Sem personagem!") end
-
-    local humanoid = char:FindFirstChildOfClass("Humanoid")
-    if not humanoid then return warn("❌ Sem Humanoid!") end
-
-    local seat = humanoid.SeatPart
-    if not seat then
-        return warn("🙃 Você não está sentado em nada.")
+    -- Define transparências do clone
+    for _, v in pairs(InvisibleCharacter:GetDescendants()) do
+        if v:IsA("BasePart") then
+            v.Transparency = v.Name == "HumanoidRootPart" and 1 or 0.5
+        end
     end
 
-    local parentModel = seat:FindFirstAncestorOfClass("Model")
-    if parentModel then
-        print("🔥 Destruindo modelo:", parentModel.Name)
-        parentModel:Destroy()
-    else
-        print("⚠️ Nenhum modelo pai encontrado, destruindo apenas o seat:", seat.Name)
-        seat:Destroy()
+    -- Função de respawn
+    function Respawn()
+        if IsInvis then
+            pcall(function()
+                Player.Character = Character
+                task.wait()
+                Character.Parent = workspace
+                Character:FindFirstChildWhichIsA("Humanoid"):Destroy()
+                InvisibleCharacter.Parent = nil
+                IsInvis = false
+                invisRunning = false
+            end)
+        else
+            pcall(function()
+                Player.Character = Character
+                task.wait()
+                Character.Parent = workspace
+                TurnVisible()
+            end)
+        end
+    end
+
+    -- Detecta morte do clone
+    local invisDied
+    invisDied = InvisibleCharacter:FindFirstChildOfClass("Humanoid").Died:Connect(function()
+        Respawn()
+        invisDied:Disconnect()
+    end)
+
+    -- Move câmera para clone
+    local CF_1 = Player.Character.HumanoidRootPart.CFrame
+    Character:MoveTo(Vector3.new(0, math.pi * 1000000, 0))
+    Player.Character = InvisibleCharacter
+    InvisibleCharacter.Parent = workspace
+    InvisibleCharacter.HumanoidRootPart.CFrame = CF_1
+    Player.Character.Animate.Disabled = true
+    Player.Character.Animate.Disabled = false
+
+    -- Função para voltar visível
+    function TurnVisible()
+        if not IsInvis then return end
+        invisFix:Disconnect()
+        invisDied:Disconnect()
+        local CF_1 = Player.Character.HumanoidRootPart.CFrame
+        Character.HumanoidRootPart.CFrame = CF_1
+        InvisibleCharacter:Destroy()
+        Player.Character = Character
+        Character.Parent = workspace
+        IsInvis = false
+        Player.Character.Animate.Disabled = true
+        Player.Character.Animate.Disabled = false
+        invisDied = Character:FindFirstChildOfClass("Humanoid").Died:Connect(function()
+            Respawn()
+            invisDied:Disconnect()
+        end)
+        invisRunning = false
     end
 end
 
+-- ===== Toggle =====
+sections.Section3:AddToggle({
+    enabled = true,
+    text = "Invisible (IY)",
+    flag = "InvisMode",
+    tooltip = "Ativa/Desativa a invisibilidade estilo Infinite Yield.",
+    risky = true,
+    callback = function(state)
+        if state then
+            TurnInvisible()
+        else
+            if IsInvis then
+                TurnVisible()
+            end
+        end
+    end
+})
+
+
 
 
 
 sections.Section3:AddButton({
-	enabled = true,
-	text = "Ficar Invisível",
-	flag = "Invis",
-	tooltip = "Fica invisível (reset pra voltar)",
-	risky = true,
-	confirm = false, -- shows confirm button
-	callback = function()
-        if game.ReplicatedStorage:FindFirstChild("DeleteCar") then
-            print("Grau Osascorte - Ficando invisivel...")
-            warn("Caso der errado, lembre-se de primeiro entrar em sua moto / carro!")
-            game.ReplicatedStorage.DeleteCar:FireServer()
-        else
-            print("Universal - Ficando Invisível...")
-            warn("Caso der errado, lembre-se de primeiro entrar em sua moto / carro!")
+    enabled = true,
+    text = "Ficar Invisível (BUG)",
+    flag = "InvisBug",
+    tooltip = "Deleta a moto / carro, quando você estiver sentado em cima, se tornando invisível.",
+    risky = false,
+    confirm = false,
+    callback = function()
+        local char = player.Character
+        if not char then return end
 
-            destroySeatParent()
+        local humanoid = char:FindFirstChild("Humanoid")
+        if humanoid and humanoid.SeatPart then
+            local seatPart = humanoid.SeatPart
+            if seatPart:IsA("Seat") or seatPart:IsA("VehicleSeat") then
+                local parent = seatPart.Parent
+                if parent and parent:IsDescendantOf(workspace) then
+                    parent:Destroy()
+                    library:SendNotification("Invisível aplicado com sucesso.", 5, Color3.new(0, 1, 0))
+                end
+            end
+        else
+            library:SendNotification("Você precisa estar sentado em um veículo para usar isso.", 5, Color3.new(1, 0, 0))
         end
-	end
+    end
 })
+
+
+
+
+
+
+
+
 
 
 
@@ -3520,6 +3417,70 @@ sections.Section3:AddSlider({
 
 ---------------- ARMAS ----------------
 
+armaSelecionada = nil
+
+local function getGuns()
+    items = {}
+    for _,v in pairs(game.ReplicatedStorage:GetDescendants()) do
+        if v:IsA("Tool") then
+            table.insert(items, v.Name)
+        end
+    end
+    return items
+end
+
+
+local function getSelectedGun()
+    local found = false
+    for _,v in pairs(game.ReplicatedStorage:GetDescendants()) do
+        if v.Name == tostring(armaSelecionada) then
+            v.Parent = game.Players.LocalPlayer.Backpack
+            print("[PUXADA] - Arma: ".. armaSelecionada)
+            found = true
+            break
+        end
+    end
+
+    if found == false then
+        print("arma n encontrada seu merda")
+    end
+end
+
+
+
+
+
+
+
+
+sections.Section4:AddList({
+	enabled = true,
+	text = "Selecionar Arma / Item",
+	flag = "ItemDropdown",
+	multi = false,
+	value = "",
+	values = getGuns(),
+	callback = function(val)
+        armaSelecionada = val
+	end
+})
+
+
+
+
+sections.Section4:AddButton({
+	enabled = true,
+	text = "Puxar Arma",
+	flag = "PuxarSelecionada",
+	tooltip = "Puxar Selecionada",
+	risky = true,
+	confirm = true, -- shows confirm button
+	callback = function(v)
+        getSelectedGun()
+	end
+})
+
+
 
 
 sections.Section4:AddButton({
@@ -3549,9 +3510,19 @@ sections.Section3:AddSeparator({
 })
 
 
-
-
-
+----------------- SERVIDOR FE & FE ANIMS -----------------
+sections.Section6:AddButton({
+    enabled = true,
+    text = "Executar Dex",
+    flag = "ExecuteDex",
+    tooltip = "Executa o Dex Explorer",
+    risky = false,
+    confirm = false,
+    callback = function()
+        library:SendNotification("Dex being loaded...", 5, Color3.new(255, 0, 0))
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))()
+    end
+})
 
 
 
