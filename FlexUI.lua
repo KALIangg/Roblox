@@ -49,10 +49,6 @@ TitleText.TextColor3 = TEXT_COLOR
 TitleText.TextSize = 20
 TitleText.TextXAlignment = Enum.TextXAlignment.Left
 
-function FlexUI:SetTitle(arg)
-	TitleText.Text = arg
-end
-
 local MinBtn = Instance.new("TextButton", TitleBar)
 MinBtn.Size = UDim2.new(0, 40, 0, 40)
 MinBtn.Position = UDim2.new(1, -80, 0, 0)
@@ -130,6 +126,10 @@ end
 local FlexUI = {}
 FlexUI.Tabs = {}
 local currentTab = nil
+
+function FlexUI:SetTitle(arg)
+	TitleText.Text = arg
+end
 
 function FlexUI:AddTab(name)
 	local Button = Instance.new("TextButton", Sidebar)
