@@ -43,11 +43,15 @@ local TitleText = Instance.new("TextLabel", TitleBar)
 TitleText.Size = UDim2.new(1, -100, 1, 0)
 TitleText.Position = UDim2.new(0, 10, 0, 0)
 TitleText.BackgroundTransparency = 1
-TitleText.Text = "⚙️ Lua God Menu"
+TitleText.Text = "Flex UI"
 TitleText.Font = Enum.Font.GothamBold
 TitleText.TextColor3 = TEXT_COLOR
 TitleText.TextSize = 20
 TitleText.TextXAlignment = Enum.TextXAlignment.Left
+
+local function FlexUI:SetTitle(arg)
+	TitleText.Text = arg
+end
 
 local MinBtn = Instance.new("TextButton", TitleBar)
 MinBtn.Size = UDim2.new(0, 40, 0, 40)
