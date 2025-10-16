@@ -49,7 +49,7 @@ TitleText.TextColor3 = TEXT_COLOR
 TitleText.TextSize = 20
 TitleText.TextXAlignment = Enum.TextXAlignment.Left
 
-local function FlexUI:SetTitle(arg)
+function FlexUI:SetTitle(arg)
 	TitleText.Text = arg
 end
 
