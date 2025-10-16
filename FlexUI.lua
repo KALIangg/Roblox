@@ -130,6 +130,65 @@ local currentTab = nil
 function FlexUI:SetTitle(arg)
 	TitleText.Text = arg
 end
+--===[ SISTEMA DE NOTIFICAÇÃO ]===--
+local NotificationsFolder = Instance.new("Frame", MenuGui)
+NotificationsFolder.Size = UDim2.new(0, 300, 0, 400)
+NotificationsFolder.Position = UDim2.new(1, -310, 0, 50)
+NotificationsFolder.BackgroundTransparency = 1
+NotificationsFolder.ClipsDescendants = true
+NotificationsFolder.ZIndex = 100
+
+local NotificationTypes = {
+	Success = {Color = Color3.fromRGB(50, 180, 60), Icon = "✔"}, -- verde
+	Error   = {Color = Color3.fromRGB(200, 40, 40), Icon = "✖"}, -- vermelho
+	Warning = {Color = Color3.fromRGB(255, 180, 50), Icon = "⚠"}, -- amarelo
+	Info    = {Color = Color3.fromRGB(50, 150, 255), Icon = "ℹ"} -- azul
+}
+
+function FlexUI:Notify(type, text, duration)
+	duration = duration or 3 -- segundos
+
+	local TypeData = NotificationTypes[type] or NotificationTypes.Info
+
+	local Notif = Instance.new("Frame", NotificationsFolder)
+	Notif.Size = UDim2.new(1, 0, 0, 50)
+	Notif.Position = UDim2.new(0, 0, 1, 10) -- fora da tela
+	Notif.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+	Notif.BorderSizePixel = 0
+	Notif.ClipsDescendants = true
+	Notif.ZIndex = 101
+
+	local Icon = Instance.new("TextLabel", Notif)
+	Icon.Size = UDim2.new(0, 50, 1, 0)
+	Icon.BackgroundTransparency = 1
+	Icon.Font = Enum.Font.GothamBold
+	Icon.TextSize = 20
+	Icon.TextColor3 = TypeData.Color
+	Icon.Text = TypeData.Icon
+
+	local Msg = Instance.new("TextLabel", Notif)
+	Msg.Size = UDim2.new(1, -60, 1, 0)
+	Msg.Position = UDim2.new(0, 50, 0, 0)
+	Msg.BackgroundTransparency = 1
+	Msg.Text = text
+	Msg.Font = Enum.Font.Gotham
+	Msg.TextSize = 14
+	Msg.TextColor3 = TEXT_COLOR
+	Msg.TextXAlignment = Enum.TextXAlignment.Left
+
+	-- animação de entrada
+	local goal = UDim2.new(0, 300, 0, (#NotificationsFolder:GetChildren())*55)
+	TweenService:Create(Notif, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {Position = goal}):Play()
+
+	-- remove após o tempo
+	task.delay(duration, function()
+		TweenService:Create(Notif, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {Position = UDim2.new(0, 0, 1, 10)}):Play()
+		task.delay(0.35, function()
+			Notif:Destroy()
+		end)
+	end)
+end
+
 
 function FlexUI:AddTab(name)
 	local Button = Instance.new("TextButton", Sidebar)
