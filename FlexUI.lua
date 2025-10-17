@@ -1,369 +1,875 @@
 -- 🌌 Lua God | Flex UI Framework - Kubca @ FiveSense 🌌
--- 🔧 UI totalmente encapsulada e automatizada
--- Nenhuma propriedade precisa ser manipulada fora das funções!
+-- 🚀 Versão Melhorada: UI totalmente responsiva, animada e funcional
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
---===[ CONFIGURAÇÃO DE TEMA ]===--
-local THEME_COLOR = Color3.fromRGB(180, 40, 40) -- vermelho
-local BG_COLOR = Color3.fromRGB(15, 15, 20)
-local TEXT_COLOR = Color3.fromRGB(240, 240, 255)
-local HIGHLIGHT_COLOR = Color3.fromRGB(255, 70, 70)
+--===[ CONFIGURAÇÃO DE TEMA AVANÇADA ]===--
+local THEME = {
+    Primary = Color3.fromRGB(180, 40, 40),
+    Secondary = Color3.fromRGB(25, 25, 35),
+    Background = Color3.fromRGB(15, 15, 20),
+    Card = Color3.fromRGB(30, 30, 40),
+    Text = Color3.fromRGB(240, 240, 255),
+    Highlight = Color3.fromRGB(255, 70, 70),
+    Success = Color3.fromRGB(50, 180, 60),
+    Error = Color3.fromRGB(200, 40, 40),
+    Warning = Color3.fromRGB(255, 180, 50),
+    Info = Color3.fromRGB(50, 150, 255)
+}
 
---===[ GUI PRINCIPAL ]===--
-local MenuGui = Instance.new("ScreenGui", playerGui)
-MenuGui.Name = "FlexMenu"
+--===[ SISTEMA DE ANIMAÇÕES ]===--
+local EasingStyles = {
+    Smooth = Enum.EasingStyle.Quint,
+    Bouncy = Enum.EasingStyle.Back,
+    Elastic = Enum.EasingStyle.Elastic
+}
+
+local function CreateTween(object, properties, duration, easingStyle)
+    easingStyle = easingStyle or Enum.EasingStyle.Quad
+    local tweenInfo = TweenInfo.new(duration, easingStyle, Enum.EasingDirection.Out)
+    return TweenService:Create(object, tweenInfo, properties)
+end
+
+--===[ GUI PRINCIPAL RESPONSIVA ]===--
+local MenuGui = Instance.new("ScreenGui")
+MenuGui.Name = "FlexMenuPro"
 MenuGui.ResetOnSpawn = false
 MenuGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+MenuGui.Parent = playerGui
 
+-- Efeito de blur dinâmico
 local Blur = Instance.new("BlurEffect")
 Blur.Size = 0
 Blur.Parent = game:GetService("Lighting")
 
+-- Frame principal com responsividade
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 600, 0, 400)
-MainFrame.Position = UDim2.new(0.5, -300, 0.5, -200)
-MainFrame.BackgroundColor3 = BG_COLOR
+MainFrame.Size = UDim2.new(0, 650, 0, 450)
+MainFrame.Position = UDim2.new(0.5, -325, 0.5, -225)
+MainFrame.BackgroundColor3 = THEME.Background
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.ClipsDescendants = true
 MainFrame.Parent = MenuGui
 
---===[ TÍTULO E BOTÕES ]===--
-local TitleBar = Instance.new("Frame", MainFrame)
-TitleBar.Size = UDim2.new(1, 0, 0, 40)
-TitleBar.BackgroundColor3 = THEME_COLOR
+-- Adicionar sombra ao frame principal
+local Shadow = Instance.new("ImageLabel")
+Shadow.Name = "Shadow"
+Shadow.Size = UDim2.new(1, 20, 1, 20)
+Shadow.Position = UDim2.new(0, -10, 0, -10)
+Shadow.BackgroundTransparency = 1
+Shadow.Image = "rbxassetid://1316045217"
+Shadow.ImageColor3 = Color3.new(0, 0, 0)
+Shadow.ImageTransparency = 0.8
+Shadow.ScaleType = Enum.ScaleType.Slice
+Shadow.SliceCenter = Rect.new(10, 10, 118, 118)
+Shadow.Parent = MainFrame
 
-local TitleText = Instance.new("TextLabel", TitleBar)
-TitleText.Size = UDim2.new(1, -100, 1, 0)
-TitleText.Position = UDim2.new(0, 10, 0, 0)
+--===[ BARRA DE TÍTULO MODERNA ]===--
+local TitleBar = Instance.new("Frame")
+TitleBar.Size = UDim2.new(1, 0, 0, 45)
+TitleBar.BackgroundColor3 = THEME.Primary
+TitleBar.ZIndex = 5
+TitleBar.Parent = MainFrame
+
+-- Gradiente na barra de título
+local TitleGradient = Instance.new("UIGradient")
+TitleGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, THEME.Primary),
+    ColorSequenceKeypoint.new(1, THEME.Primary:Lerp(Color3.new(0,0,0), 0.3))
+})
+TitleGradient.Rotation = -15
+TitleGradient.Parent = TitleBar
+
+local TitleText = Instance.new("TextLabel")
+TitleText.Size = UDim2.new(1, -120, 1, 0)
+TitleText.Position = UDim2.new(0, 15, 0, 0)
 TitleText.BackgroundTransparency = 1
-TitleText.Text = "Flex UI"
+TitleText.Text = "Flex UI Pro"
 TitleText.Font = Enum.Font.GothamBold
-TitleText.TextColor3 = TEXT_COLOR
-TitleText.TextSize = 20
+TitleText.TextColor3 = THEME.Text
+TitleText.TextSize = 18
 TitleText.TextXAlignment = Enum.TextXAlignment.Left
+TitleText.ZIndex = 6
+TitleText.Parent = TitleBar
 
-local MinBtn = Instance.new("TextButton", TitleBar)
-MinBtn.Size = UDim2.new(0, 40, 0, 40)
-MinBtn.Position = UDim2.new(1, -80, 0, 0)
+-- Botões de controle modernos
+local ControlButtons = Instance.new("Frame")
+ControlButtons.Size = UDim2.new(0, 80, 1, 0)
+ControlButtons.Position = UDim2.new(1, -80, 0, 0)
+ControlButtons.BackgroundTransparency = 1
+ControlButtons.ZIndex = 6
+ControlButtons.Parent = TitleBar
+
+local MinBtn = Instance.new("TextButton")
+MinBtn.Size = UDim2.new(0, 40, 1, 0)
 MinBtn.BackgroundTransparency = 1
-MinBtn.Text = "_"
+MinBtn.Text = "─"
 MinBtn.Font = Enum.Font.GothamBold
-MinBtn.TextSize = 18
-MinBtn.TextColor3 = TEXT_COLOR
+MinBtn.TextSize = 16
+MinBtn.TextColor3 = THEME.Text
+MinBtn.Parent = ControlButtons
 
-local CloseBtn = Instance.new("TextButton", TitleBar)
-CloseBtn.Size = UDim2.new(0, 40, 0, 40)
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 40, 1, 0)
 CloseBtn.Position = UDim2.new(1, -40, 0, 0)
 CloseBtn.BackgroundTransparency = 1
-CloseBtn.Text = "✖"
+CloseBtn.Text = "✕"
 CloseBtn.Font = Enum.Font.GothamBold
-CloseBtn.TextSize = 18
-CloseBtn.TextColor3 = TEXT_COLOR
+CloseBtn.TextSize = 16
+CloseBtn.TextColor3 = THEME.Text
+CloseBtn.Parent = ControlButtons
 
---===[ ANIMAÇÕES DO MENU ]===--
+--===[ SIDEBAR INTELIGENTE ]===--
+local Sidebar = Instance.new("Frame")
+Sidebar.Size = UDim2.new(0, 60, 1, -45)
+Sidebar.Position = UDim2.new(0, 0, 0, 45)
+Sidebar.BackgroundColor3 = THEME.Secondary
+Sidebar.BorderSizePixel = 0
+Sidebar.ClipsDescendants = true
+Sidebar.ZIndex = 10
+Sidebar.Parent = MainFrame
+
+local SidebarList = Instance.new("UIListLayout")
+SidebarList.Padding = UDim.new(0, 8)
+SidebarList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+SidebarList.Parent = Sidebar
+
+-- Indicador de tab ativa
+local ActiveTabIndicator = Instance.new("Frame")
+ActiveTabIndicator.Size = UDim2.new(0, 4, 0, 25)
+ActiveTabIndicator.BackgroundColor3 = THEME.Primary
+ActiveTabIndicator.BorderSizePixel = 0
+ActiveTabIndicator.ZIndex = 12
+ActiveTabIndicator.Visible = false
+ActiveTabIndicator.Parent = Sidebar
+
+--===[ CONTAINER DE TABS RESPONSIVO ]===--
+local TabsContainer = Instance.new("Frame")
+TabsContainer.Position = UDim2.new(0, 60, 0, 45)
+TabsContainer.Size = UDim2.new(1, -60, 1, -45)
+TabsContainer.BackgroundTransparency = 1
+TabsContainer.ClipsDescendants = true
+TabsContainer.ZIndex = 8
+TabsContainer.Parent = MainFrame
+
+--===[ SISTEMA DE ANIMAÇÃO DA SIDEBAR ]===--
+local sidebarOpen = false
+local sidebarDebounce = false
+
+local function ToggleSidebar(open)
+    if sidebarDebounce then return end
+    sidebarDebounce = true
+    
+    sidebarOpen = open
+    local goalSize = open and UDim2.new(0, 180, 1, -45) or UDim2.new(0, 60, 1, -45)
+    local goalTabPos = open and UDim2.new(0, 180, 0, 45) or UDim2.new(0, 60, 0, 45)
+    local goalTabSize = open and UDim2.new(1, -180, 1, -45) or UDim2.new(1, -60, 1, -45)
+    
+    CreateTween(Sidebar, {Size = goalSize}, 0.4, EasingStyles.Smooth):Play()
+    CreateTween(TabsContainer, {Position = goalTabPos, Size = goalTabSize}, 0.4, EasingStyles.Smooth):Play()
+    
+    wait(0.4)
+    sidebarDebounce = false
+end
+
+-- Hover inteligente na sidebar
+Sidebar.MouseEnter:Connect(function()
+    if not sidebarOpen then
+        ToggleSidebar(true)
+    end
+end)
+
+Sidebar.MouseLeave:Connect(function()
+    if sidebarOpen then
+        ToggleSidebar(false)
+    end
+end)
+
+--===[ CONTROLES PRINCIPAIS ]===--
 local minimized = false
 MinBtn.MouseButton1Click:Connect(function()
-	minimized = not minimized
-	local goalSize = minimized and UDim2.new(0, 600, 0, 40) or UDim2.new(0, 600, 0, 400)
-	TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {Size = goalSize}):Play()
-	TweenService:Create(Blur, TweenInfo.new(0.3), {Size = minimized and 0 or 15}):Play()
+    minimized = not minimized
+    local goalSize = minimized and UDim2.new(0, 650, 0, 45) or UDim2.new(0, 650, 0, 450)
+    local goalBlur = minimized and 0 or 10
+    
+    CreateTween(MainFrame, {Size = goalSize}, 0.3, EasingStyles.Bouncy):Play()
+    CreateTween(Blur, {Size = goalBlur}, 0.3):Play()
 end)
 
 CloseBtn.MouseButton1Click:Connect(function()
-	MenuGui.Enabled = false
-	TweenService:Create(Blur, TweenInfo.new(0.3), {Size = 0}):Play()
+    CreateTween(MainFrame, {Size = UDim2.new(0, 0, 0, 0)}, 0.3, EasingStyles.Elastic):Play()
+    CreateTween(Blur, {Size = 0}, 0.3):Play()
+    wait(0.3)
+    MenuGui.Enabled = false
 end)
 
---===[ SIDEBAR ANIMADA ]===--
-local Sidebar = Instance.new("Frame", MainFrame)
-Sidebar.Size = UDim2.new(0, 50, 1, -40)
-Sidebar.Position = UDim2.new(0, 0, 0, 40)
-Sidebar.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-Sidebar.BorderSizePixel = 0
-Sidebar.ClipsDescendants = true
-Sidebar.ZIndex = 15
-
-local SidebarList = Instance.new("UIListLayout", Sidebar)
-SidebarList.Padding = UDim.new(0, 5)
-SidebarList.HorizontalAlignment = Enum.HorizontalAlignment.Center
-
-local sidebarOpen = false
-Sidebar.MouseEnter:Connect(function()
-	sidebarOpen = true
-	TweenService:Create(Sidebar, TweenInfo.new(0.3), {Size = UDim2.new(0, 150, 1, -40)}):Play()
-end)
-Sidebar.MouseLeave:Connect(function()
-	sidebarOpen = false
-	TweenService:Create(Sidebar, TweenInfo.new(0.3), {Size = UDim2.new(0, 50, 1, -40)}):Play()
-end)
-
---===[ CONTAINER DE TABS ]===--
-local TabsContainer = Instance.new("Frame", MainFrame)
-TabsContainer.Position = UDim2.new(0, 150, 0, 40)
-TabsContainer.Size = UDim2.new(1, -150, 1, -40)
-TabsContainer.BackgroundTransparency = 1
-TabsContainer.ClipsDescendants = false
-TabsContainer.ZIndex = 10
-
---===[ EFEITO DE HOVER GENÉRICO ]===--
-local function HoverEffect(obj, color)
-	obj.MouseEnter:Connect(function()
-		TweenService:Create(obj, TweenInfo.new(0.15), {BackgroundColor3 = color}):Play()
-	end)
-	obj.MouseLeave:Connect(function()
-		TweenService:Create(obj, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(40,40,50)}):Play()
-	end)
-end
-
---===[ SISTEMA DE TABS ENCAPSULADO ]===--
+--===[ SISTEMA DE UI ENCAPSULADO ]===--
 local FlexUI = {}
 FlexUI.Tabs = {}
+FlexUI.Connections = {}
 local currentTab = nil
 
-function FlexUI:SetTitle(arg)
-	TitleText.Text = arg
+-- Função para criar efeitos de hover
+local function CreateHoverEffect(button, normalColor, hoverColor)
+    local connection1 = button.MouseEnter:Connect(function()
+        CreateTween(button, {BackgroundColor3 = hoverColor}, 0.2):Play()
+    end)
+    
+    local connection2 = button.MouseLeave:Connect(function()
+        CreateTween(button, {BackgroundColor3 = normalColor}, 0.2):Play()
+    end)
+    
+    table.insert(FlexUI.Connections, connection1)
+    table.insert(FlexUI.Connections, connection2)
 end
---===[ SISTEMA DE NOTIFICAÇÃO ]===--
-local NotificationsFolder = Instance.new("Frame", MenuGui)
-NotificationsFolder.Size = UDim2.new(0, 300, 0, 400)
-NotificationsFolder.Position = UDim2.new(1, -310, 0, 50)
+
+--===[ SISTEMA DE NOTIFICAÇÕES AVANÇADO ]===--
+local NotificationsFolder = Instance.new("Frame")
+NotificationsFolder.Size = UDim2.new(0, 320, 0, 500)
+NotificationsFolder.Position = UDim2.new(1, -330, 0, 20)
 NotificationsFolder.BackgroundTransparency = 1
 NotificationsFolder.ClipsDescendants = true
 NotificationsFolder.ZIndex = 100
+NotificationsFolder.Parent = MenuGui
 
 local NotificationTypes = {
-	Success = {Color = Color3.fromRGB(50, 180, 60), Icon = "✔"}, -- verde
-	Error   = {Color = Color3.fromRGB(200, 40, 40), Icon = "✖"}, -- vermelho
-	Warning = {Color = Color3.fromRGB(255, 180, 50), Icon = "⚠"}, -- amarelo
-	Info    = {Color = Color3.fromRGB(50, 150, 255), Icon = "ℹ"} -- azul
+    Success = {Color = THEME.Success, Icon = "✓"},
+    Error = {Color = THEME.Error, Icon = "✗"},
+    Warning = {Color = THEME.Warning, Icon = "⚠"},
+    Info = {Color = THEME.Info, Icon = "ℹ"}
 }
 
-function FlexUI:Notify(type, text, duration)
-	duration = duration or 3 -- segundos
-
-	local TypeData = NotificationTypes[type] or NotificationTypes.Info
-
-	local Notif = Instance.new("Frame", NotificationsFolder)
-	Notif.Size = UDim2.new(1, 0, 0, 50)
-	Notif.Position = UDim2.new(0, 0, 1, 10) -- fora da tela
-	Notif.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-	Notif.BorderSizePixel = 0
-	Notif.ClipsDescendants = true
-	Notif.ZIndex = 101
-
-	local Icon = Instance.new("TextLabel", Notif)
-	Icon.Size = UDim2.new(0, 50, 1, 0)
-	Icon.BackgroundTransparency = 1
-	Icon.Font = Enum.Font.GothamBold
-	Icon.TextSize = 20
-	Icon.TextColor3 = TypeData.Color
-	Icon.Text = TypeData.Icon
-
-	local Msg = Instance.new("TextLabel", Notif)
-	Msg.Size = UDim2.new(1, -60, 1, 0)
-	Msg.Position = UDim2.new(0, 50, 0, 0)
-	Msg.BackgroundTransparency = 1
-	Msg.Text = text
-	Msg.Font = Enum.Font.Gotham
-	Msg.TextSize = 14
-	Msg.TextColor3 = TEXT_COLOR
-	Msg.TextXAlignment = Enum.TextXAlignment.Left
-
-	-- animação de entrada
-	local goal = UDim2.new(0, 300, 0, (#NotificationsFolder:GetChildren())*55)
-	TweenService:Create(Notif, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {Position = goal}):Play()
-
-	-- remove após o tempo
-	task.delay(duration, function()
-		TweenService:Create(Notif, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {Position = UDim2.new(0, 0, 1, 10)}):Play()
-		task.delay(0.35, function()
-			Notif:Destroy()
-		end)
-	end)
+function FlexUI:Notify(type, title, message, duration)
+    duration = duration or 5
+    
+    local TypeData = NotificationTypes[type] or NotificationTypes.Info
+    local notificationCount = #NotificationsFolder:GetChildren()
+    
+    local Notification = Instance.new("Frame")
+    Notification.Size = UDim2.new(1, -10, 0, 80)
+    Notification.Position = UDim2.new(0, 5, 0, notificationCount * 85)
+    Notification.BackgroundColor3 = THEME.Card
+    Notification.BorderSizePixel = 0
+    Notification.ClipsDescendants = true
+    Notification.ZIndex = 101
+    Notification.Parent = NotificationsFolder
+    
+    -- Barra lateral colorida
+    local AccentBar = Instance.new("Frame")
+    AccentBar.Size = UDim2.new(0, 4, 1, 0)
+    AccentBar.BackgroundColor3 = TypeData.Color
+    AccentBar.BorderSizePixel = 0
+    AccentBar.ZIndex = 102
+    AccentBar.Parent = Notification
+    
+    -- Ícone
+    local Icon = Instance.new("TextLabel")
+    Icon.Size = UDim2.new(0, 40, 0, 40)
+    Icon.Position = UDim2.new(0, 15, 0, 15)
+    Icon.BackgroundTransparency = 1
+    Icon.Font = Enum.Font.GothamBold
+    Icon.TextSize = 20
+    Icon.TextColor3 = TypeData.Color
+    Icon.Text = TypeData.Icon
+    Icon.ZIndex = 102
+    Icon.Parent = Notification
+    
+    -- Título
+    local Title = Instance.new("TextLabel")
+    Title.Size = UDim2.new(1, -70, 0, 20)
+    Title.Position = UDim2.new(0, 65, 0, 15)
+    Title.BackgroundTransparency = 1
+    Title.Text = title
+    Title.Font = Enum.Font.GothamBold
+    Title.TextSize = 14
+    Title.TextColor3 = THEME.Text
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+    Title.ZIndex = 102
+    Title.Parent = Notification
+    
+    -- Mensagem
+    local Message = Instance.new("TextLabel")
+    Message.Size = UDim2.new(1, -70, 0, 35)
+    Message.Position = UDim2.new(0, 65, 0, 35)
+    Message.BackgroundTransparency = 1
+    Message.Text = message
+    Message.Font = Enum.Font.Gotham
+    Message.TextSize = 12
+    Message.TextColor3 = THEME.Text
+    Message.TextXAlignment = Enum.TextXAlignment.Left
+    Message.TextYAlignment = Enum.TextYAlignment.Top
+    Message.TextWrapped = true
+    Message.ZIndex = 102
+    Message.Parent = Notification
+    
+    -- Barra de progresso
+    local ProgressBar = Instance.new("Frame")
+    ProgressBar.Size = UDim2.new(1, 0, 0, 3)
+    ProgressBar.Position = UDim2.new(0, 0, 1, -3)
+    ProgressBar.BackgroundColor3 = TypeData.Color
+    ProgressBar.BorderSizePixel = 0
+    ProgressBar.ZIndex = 102
+    ProgressBar.Parent = Notification
+    
+    -- Animação de entrada
+    Notification.Position = UDim2.new(1, 5, 0, notificationCount * 85)
+    CreateTween(Notification, {Position = UDim2.new(0, 5, 0, notificationCount * 85)}, 0.5, EasingStyles.Bouncy):Play()
+    
+    -- Animação da barra de progresso
+    CreateTween(ProgressBar, {Size = UDim2.new(0, 0, 0, 3)}, duration):Play()
+    
+    -- Auto-remover após o tempo
+    task.delay(duration, function()
+        CreateTween(Notification, {Position = UDim2.new(1, 5, 0, notificationCount * 85)}, 0.5, EasingStyles.Smooth):Play()
+        task.delay(0.5, function()
+            Notification:Destroy()
+        end)
+    end)
 end
 
-
-function FlexUI:AddTab(name)
-	local Button = Instance.new("TextButton", Sidebar)
-	Button.Size = UDim2.new(1, -10, 0, 30)
-	Button.BackgroundColor3 = Color3.fromRGB(40,40,50)
-	Button.Text = name
-	Button.Font = Enum.Font.GothamBold
-	Button.TextSize = 14
-	Button.TextColor3 = TEXT_COLOR
-	Button.AutoButtonColor = false
-	Button.ZIndex = 16
-	HoverEffect(Button, HIGHLIGHT_COLOR)
-
-	local Frame = Instance.new("ScrollingFrame", TabsContainer)
-	Frame.Size = UDim2.new(1, 0, 1, -50)
-	Frame.Position = UDim2.new(0, 0, 0, 50)
-	Frame.CanvasSize = UDim2.new(0,0,0,0)
-	Frame.ScrollBarThickness = 6
-	Frame.BackgroundTransparency = 1
-	Frame.ClipsDescendants = false
-	Frame.Visible = false
-	local Layout = Instance.new("UIListLayout", Frame)
-	Layout.Padding = UDim.new(0, 6)
-
-	Button.MouseButton1Click:Connect(function()
-		for _, v in pairs(FlexUI.Tabs) do
-			v.Frame.Visible = false
-		end
-		Frame.Visible = true
-		currentTab = name
-	end)
-
-	FlexUI.Tabs[name] = {Frame = Frame, Button = Button}
-	-- Se for a primeira tab criada, ativa automaticamente
-	if not currentTab then
-		currentTab = name
-		Frame.Visible = true
-	end
-	return name
+--===[ SISTEMA DE TABS ]===--
+function FlexUI:SetTitle(title)
+    TitleText.Text = title
 end
 
---===[ ELEMENTOS DE INTERFACE ]===--
+function FlexUI:AddTab(name, icon)
+    local TabButton = Instance.new("TextButton")
+    TabButton.Size = UDim2.new(1, -10, 0, 40)
+    TabButton.BackgroundColor3 = THEME.Card
+    TabButton.Text = ""
+    TabButton.AutoButtonColor = false
+    TabButton.ZIndex = 11
+    TabButton.Parent = Sidebar
+    
+    -- Ícone da tab
+    local TabIcon = Instance.new("TextLabel")
+    TabIcon.Size = UDim2.new(0, 24, 0, 24)
+    TabIcon.Position = UDim2.new(0.5, -12, 0, 8)
+    TabIcon.BackgroundTransparency = 1
+    TabIcon.Text = icon or "◉"
+    TabIcon.Font = Enum.Font.GothamBold
+    TabIcon.TextSize = 14
+    TabIcon.TextColor3 = THEME.Text
+    TabIcon.ZIndex = 12
+    TabIcon.Parent = TabButton
+    
+    -- Nome da tab (visível apenas quando expandido)
+    local TabName = Instance.new("TextLabel")
+    TabName.Size = UDim2.new(1, -10, 0, 20)
+    TabName.Position = UDim2.new(0, 5, 0, 30)
+    TabName.BackgroundTransparency = 1
+    TabName.Text = name
+    TabName.Font = Enum.Font.Gotham
+    TabName.TextSize = 11
+    TabName.TextColor3 = THEME.Text
+    TabName.TextXAlignment = Enum.TextXAlignment.Center
+    TabName.ZIndex = 12
+    TabName.Visible = false
+    TabName.Parent = TabButton
+    
+    -- Frame da tab
+    local TabFrame = Instance.new("ScrollingFrame")
+    TabFrame.Size = UDim2.new(1, 0, 1, -50)
+    TabFrame.Position = UDim2.new(0, 0, 0, 50)
+    TabFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    TabFrame.ScrollBarThickness = 6
+    TabFrame.ScrollBarImageColor3 = THEME.Primary
+    TabFrame.BackgroundTransparency = 1
+    TabFrame.Visible = false
+    TabFrame.ZIndex = 9
+    TabFrame.Parent = TabsContainer
+    
+    local Layout = Instance.new("UIListLayout")
+    Layout.Padding = UDim.new(0, 8)
+    Layout.Parent = TabFrame
+    
+    local Padding = Instance.new("UIPadding")
+    Padding.PaddingLeft = UDim.new(0, 10)
+    Padding.PaddingRight = UDim.new(0, 10)
+    Padding.PaddingTop = UDim.new(0, 10)
+    Padding.Parent = TabFrame
+    
+    -- Atualizar canvas size automaticamente
+    Layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        TabFrame.CanvasSize = UDim2.new(0, 0, 0, Layout.AbsoluteContentSize.Y + 10)
+    end)
+    
+    -- Mostrar nome quando sidebar expandir
+    local function UpdateTabVisibility()
+        TabName.Visible = sidebarOpen
+    end
+    
+    Sidebar:GetPropertyChangedSignal("Size"):Connect(UpdateTabVisibility)
+    
+    -- Sistema de clique
+    TabButton.MouseButton1Click:Connect(function()
+        for tabName, tabData in pairs(FlexUI.Tabs) do
+            tabData.Frame.Visible = false
+            CreateTween(tabData.Button, {BackgroundColor3 = THEME.Card}, 0.2):Play()
+        end
+        
+        TabFrame.Visible = true
+        CreateTween(TabButton, {BackgroundColor3 = THEME.Primary}, 0.2):Play()
+        
+        -- Mover indicador
+        ActiveTabIndicator.Visible = true
+        CreateTween(ActiveTabIndicator, {Position = UDim2.new(0, 3, 0, TabButton.AbsolutePosition.Y - Sidebar.AbsolutePosition.Y + 8)}, 0.3, EasingStyles.Bouncy):Play()
+        
+        currentTab = name
+    end)
+    
+    FlexUI.Tabs[name] = {
+        Frame = TabFrame,
+        Button = TabButton,
+        Icon = TabIcon
+    }
+    
+    CreateHoverEffect(TabButton, THEME.Card, THEME.Primary:Lerp(Color3.new(1,1,1), 0.1))
+    
+    -- Ativar primeira tab automaticamente
+    if not currentTab then
+        currentTab = name
+        TabFrame.Visible = true
+        TabButton.BackgroundColor3 = THEME.Primary
+        ActiveTabIndicator.Visible = true
+        ActiveTabIndicator.Position = UDim2.new(0, 3, 0, 8)
+    end
+    
+    return name
+end
+
+--===[ ELEMENTOS DE INTERFACE MODERNOS ]===--
+function FlexUI:AddSection(tab, title)
+    local Section = Instance.new("Frame")
+    Section.Size = UDim2.new(1, -20, 0, 40)
+    Section.BackgroundColor3 = THEME.Card
+    Section.BorderSizePixel = 0
+    Section.ZIndex = 9
+    Section.Parent = self.Tabs[tab].Frame
+    
+    local SectionTitle = Instance.new("TextLabel")
+    SectionTitle.Size = UDim2.new(1, -20, 1, 0)
+    SectionTitle.Position = UDim2.new(0, 10, 0, 0)
+    SectionTitle.BackgroundTransparency = 1
+    SectionTitle.Text = title
+    SectionTitle.Font = Enum.Font.GothamBold
+    SectionTitle.TextColor3 = THEME.Text
+    SectionTitle.TextSize = 14
+    SectionTitle.TextXAlignment = Enum.TextXAlignment.Left
+    SectionTitle.ZIndex = 10
+    SectionTitle.Parent = Section
+    
+    return Section
+end
+
 function FlexUI:AddLabel(tab, text)
-	local Label = Instance.new("TextLabel", self.Tabs[tab].Frame)
-	Label.Size = UDim2.new(1, -20, 0, 30)
-	Label.BackgroundTransparency = 1
-	Label.Text = text
-	Label.Font = Enum.Font.GothamBold
-	Label.TextColor3 = TEXT_COLOR
-	Label.TextSize = 16
-	Label.TextXAlignment = Enum.TextXAlignment.Left
+    local Label = Instance.new("TextLabel")
+    Label.Size = UDim2.new(1, -20, 0, 25)
+    Label.BackgroundTransparency = 1
+    Label.Text = text
+    Label.Font = Enum.Font.Gotham
+    Label.TextColor3 = THEME.Text
+    Label.TextSize = 13
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.TextWrapped = true
+    Label.ZIndex = 9
+    Label.Parent = self.Tabs[tab].Frame
 end
 
 function FlexUI:AddButton(tab, text, callback)
-	local Btn = Instance.new("TextButton", self.Tabs[tab].Frame)
-	Btn.Size = UDim2.new(1, -20, 0, 30)
-	Btn.BackgroundColor3 = Color3.fromRGB(40,40,50)
-	Btn.Text = text
-	Btn.Font = Enum.Font.Gotham
-	Btn.TextColor3 = TEXT_COLOR
-	Btn.TextSize = 14
-	HoverEffect(Btn, HIGHLIGHT_COLOR)
-	Btn.MouseButton1Click:Connect(callback)
-end
-
-function FlexUI:AddSeparator(tab)
-	local Line = Instance.new("Frame", self.Tabs[tab].Frame)
-	Line.Size = UDim2.new(1, -20, 0, 2)
-	Line.BackgroundColor3 = THEME_COLOR
+    local Button = Instance.new("TextButton")
+    Button.Size = UDim2.new(1, -20, 0, 35)
+    Button.BackgroundColor3 = THEME.Card
+    Button.Text = text
+    Button.Font = Enum.Font.GothamSemibold
+    Button.TextColor3 = THEME.Text
+    Button.TextSize = 13
+    Button.AutoButtonColor = false
+    Button.ZIndex = 9
+    Button.Parent = self.Tabs[tab].Frame
+    
+    CreateHoverEffect(Button, THEME.Card, THEME.Primary)
+    
+    Button.MouseButton1Click:Connect(function()
+        CreateTween(Button, {BackgroundColor3 = THEME.Highlight}, 0.1):Play()
+        task.wait(0.1)
+        CreateTween(Button, {BackgroundColor3 = THEME.Primary}, 0.1):Play()
+        callback()
+    end)
+    
+    return Button
 end
 
 function FlexUI:AddToggle(tab, text, default, callback)
-	local Btn = Instance.new("TextButton", self.Tabs[tab].Frame)
-	Btn.Size = UDim2.new(1, -20, 0, 30)
-	local state = default
-	local function update()
-		Btn.Text = text .. (state and " ✅" or " ❌")
-		Btn.BackgroundColor3 = state and Color3.fromRGB(60,120,60) or Color3.fromRGB(80,50,50)
-	end
-	update()
-	Btn.Font = Enum.Font.Gotham
-	Btn.TextSize = 14
-	Btn.TextColor3 = TEXT_COLOR
-	Btn.MouseButton1Click:Connect(function()
-		state = not state
-		update()
-		callback(state)
-	end)
+    local ToggleFrame = Instance.new("Frame")
+    ToggleFrame.Size = UDim2.new(1, -20, 0, 30)
+    ToggleFrame.BackgroundTransparency = 1
+    ToggleFrame.ZIndex = 9
+    ToggleFrame.Parent = self.Tabs[tab].Frame
+    
+    local ToggleLabel = Instance.new("TextLabel")
+    ToggleLabel.Size = UDim2.new(1, -50, 1, 0)
+    ToggleLabel.BackgroundTransparency = 1
+    ToggleLabel.Text = text
+    ToggleLabel.Font = Enum.Font.Gotham
+    ToggleLabel.TextColor3 = THEME.Text
+    ToggleLabel.TextSize = 13
+    ToggleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    ToggleLabel.ZIndex = 10
+    ToggleLabel.Parent = ToggleFrame
+    
+    local ToggleButton = Instance.new("TextButton")
+    ToggleButton.Size = UDim2.new(0, 40, 0, 20)
+    ToggleButton.Position = UDim2.new(1, -40, 0.5, -10)
+    ToggleButton.BackgroundColor3 = default and THEME.Success or THEME.Error
+    ToggleButton.Text = ""
+    ToggleButton.AutoButtonColor = false
+    ToggleButton.ZIndex = 10
+    ToggleButton.Parent = ToggleFrame
+    
+    local ToggleKnob = Instance.new("Frame")
+    ToggleKnob.Size = UDim2.new(0, 16, 0, 16)
+    ToggleKnob.Position = UDim2.new(0, default and 22 or 2, 0.5, -8)
+    ToggleKnob.BackgroundColor3 = THEME.Text
+    ToggleKnob.BorderSizePixel = 0
+    ToggleKnob.ZIndex = 11
+    ToggleKnob.Parent = ToggleButton
+    
+    local state = default
+    
+    local function UpdateToggle()
+        local goalPos = state and UDim2.new(0, 22, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+        local goalColor = state and THEME.Success or THEME.Error
+        
+        CreateTween(ToggleKnob, {Position = goalPos}, 0.2, EasingStyles.Bouncy):Play()
+        CreateTween(ToggleButton, {BackgroundColor3 = goalColor}, 0.2):Play()
+        
+        callback(state)
+    end
+    
+    ToggleButton.MouseButton1Click:Connect(function()
+        state = not state
+        UpdateToggle()
+    end)
+    
+    CreateHoverEffect(ToggleButton, state and THEME.Success or THEME.Error, 
+                     state and THEME.Success:Lerp(Color3.new(1,1,1), 0.2) or THEME.Error:Lerp(Color3.new(1,1,1), 0.2))
+    
+    return ToggleFrame
 end
 
-function FlexUI:AddDropdown(tab, text, options, callback)
-	local DropFrame = Instance.new("Frame", self.Tabs[tab].Frame)
-	DropFrame.Size = UDim2.new(1, -20, 0, 30)
-	DropFrame.BackgroundColor3 = Color3.fromRGB(40,40,50)
-	DropFrame.ZIndex = 20
-
-	local Label = Instance.new("TextLabel", DropFrame)
-	Label.Size = UDim2.new(1, -30, 1, 0)
-	Label.Position = UDim2.new(0, 10, 0, 0)
-	Label.BackgroundTransparency = 1
-	Label.Text = text .. ": (nenhum)"
-	Label.Font = Enum.Font.Gotham
-	Label.TextColor3 = TEXT_COLOR
-	Label.TextSize = 14
-	Label.ZIndex = 21
-
-	local Btn = Instance.new("TextButton", DropFrame)
-	Btn.Size = UDim2.new(0, 20, 0, 20)
-	Btn.Position = UDim2.new(1, -25, 0.5, -10)
-	Btn.Text = "▼"
-	Btn.Font = Enum.Font.GothamBold
-	Btn.TextSize = 14
-	Btn.BackgroundColor3 = THEME_COLOR
-	Btn.TextColor3 = TEXT_COLOR
-	Btn.ZIndex = 21
-	HoverEffect(Btn, HIGHLIGHT_COLOR)
-
-	local Open = false
-	local OptionFrame = Instance.new("Frame", DropFrame)
-	OptionFrame.Size = UDim2.new(1, 0, 0, 0)
-	OptionFrame.Position = UDim2.new(0, 0, 1, 0)
-	OptionFrame.BackgroundColor3 = Color3.fromRGB(25,25,30)
-	OptionFrame.ClipsDescendants = true
-	OptionFrame.ZIndex = 22
-
-	local Layout = Instance.new("UIListLayout", OptionFrame)
-	Layout.Padding = UDim.new(0, 2)
-
-	for _, opt in ipairs(options) do
-		local O = Instance.new("TextButton", OptionFrame)
-		O.Size = UDim2.new(1, -4, 0, 25)
-		O.Position = UDim2.new(0, 2, 0, 0)
-		O.Text = opt
-		O.BackgroundColor3 = Color3.fromRGB(35,35,45)
-		O.Font = Enum.Font.Gotham
-		O.TextSize = 13
-		O.TextColor3 = TEXT_COLOR
-		O.ZIndex = 23
-		HoverEffect(O, HIGHLIGHT_COLOR)
-		O.MouseButton1Click:Connect(function()
-			Label.Text = text .. ": " .. opt
-			callback(opt)
-			TweenService:Create(OptionFrame, TweenInfo.new(0.3), {Size = UDim2.new(1,0,0,0)}):Play()
-			Open = false
-		end)
-	end
-
-	Btn.MouseButton1Click:Connect(function()
-		Open = not Open
-		local goal = Open and UDim2.new(1,0,0,#options*28) or UDim2.new(1,0,0,0)
-		TweenService:Create(OptionFrame, TweenInfo.new(0.3), {Size = goal}):Play()
-	end)
+function FlexUI:AddSlider(tab, text, min, max, default, callback)
+    local SliderFrame = Instance.new("Frame")
+    SliderFrame.Size = UDim2.new(1, -20, 0, 50)
+    SliderFrame.BackgroundTransparency = 1
+    SliderFrame.ZIndex = 9
+    SliderFrame.Parent = self.Tabs[tab].Frame
+    
+    local SliderLabel = Instance.new("TextLabel")
+    SliderLabel.Size = UDim2.new(1, 0, 0, 20)
+    SliderLabel.BackgroundTransparency = 1
+    SliderLabel.Text = text .. ": " .. default
+    SliderLabel.Font = Enum.Font.Gotham
+    SliderLabel.TextColor3 = THEME.Text
+    SliderLabel.TextSize = 13
+    SliderLabel.TextXAlignment = Enum.TextXAlignment.Left
+    SliderLabel.ZIndex = 10
+    SliderLabel.Parent = SliderFrame
+    
+    local SliderTrack = Instance.new("Frame")
+    SliderTrack.Size = UDim2.new(1, 0, 0, 6)
+    SliderTrack.Position = UDim2.new(0, 0, 0, 30)
+    SliderTrack.BackgroundColor3 = THEME.Card
+    SliderTrack.BorderSizePixel = 0
+    SliderTrack.ZIndex = 10
+    SliderTrack.Parent = SliderFrame
+    
+    local SliderFill = Instance.new("Frame")
+    SliderFill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+    SliderFill.BackgroundColor3 = THEME.Primary
+    SliderFill.BorderSizePixel = 0
+    SliderFill.ZIndex = 11
+    SliderFill.Parent = SliderTrack
+    
+    local SliderButton = Instance.new("TextButton")
+    SliderButton.Size = UDim2.new(0, 16, 0, 16)
+    SliderButton.Position = UDim2.new((default - min) / (max - min), -8, 0.5, -8)
+    SliderButton.BackgroundColor3 = THEME.Text
+    SliderButton.Text = ""
+    SliderButton.AutoButtonColor = false
+    SliderButton.ZIndex = 12
+    SliderButton.Parent = SliderTrack
+    
+    local dragging = false
+    
+    local function UpdateSlider(value)
+        value = math.clamp(value, min, max)
+        local ratio = (value - min) / (max - min)
+        
+        SliderFill.Size = UDim2.new(ratio, 0, 1, 0)
+        SliderButton.Position = UDim2.new(ratio, -8, 0.5, -8)
+        SliderLabel.Text = text .. ": " .. math.floor(value)
+        
+        callback(value)
+    end
+    
+    SliderButton.MouseButton1Down:Connect(function()
+        dragging = true
+    end)
+    
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+    
+    SliderTrack.MouseButton1Down:Connect(function(x, y)
+        local relativeX = x - SliderTrack.AbsolutePosition.X
+        local ratio = math.clamp(relativeX / SliderTrack.AbsoluteSize.X, 0, 1)
+        UpdateSlider(min + ratio * (max - min))
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local relativeX = input.Position.X - SliderTrack.AbsolutePosition.X
+            local ratio = math.clamp(relativeX / SliderTrack.AbsoluteSize.X, 0, 1)
+            UpdateSlider(min + ratio * (max - min))
+        end
+    end)
+    
+    CreateHoverEffect(SliderButton, THEME.Text, THEME.Highlight)
+    
+    return SliderFrame
 end
 
-function FlexUI:AddWatermark(text)
-	local Mark = Instance.new("TextLabel", MainFrame)
-	Mark.Text = text
-	Mark.Font = Enum.Font.GothamSemibold
-	Mark.TextSize = 12
-	Mark.BackgroundTransparency = 0.5
-	Mark.BackgroundColor3 = Color3.fromRGB(50, 10, 10)
-	Mark.TextColor3 = Color3.fromRGB(255, 150, 150)
-	Mark.Size = UDim2.new(0, 200, 0, 25)
-	Mark.Position = UDim2.new(0, 15, 1, -35)
-	Mark.ZIndex = 50
-	Mark.Visible = false
-
-	Sidebar.MouseEnter:Connect(function()
-		Mark.Visible = true
-		TweenService:Create(Blur, TweenInfo.new(0.3), {Size = 15}):Play()
-	end)
-	Sidebar.MouseLeave:Connect(function()
-		Mark.Visible = false
-		TweenService:Create(Blur, TweenInfo.new(0.3), {Size = 0}):Play()
-	end)
+function FlexUI:AddDropdown(tab, text, options, default, callback)
+    local DropdownFrame = Instance.new("Frame")
+    DropdownFrame.Size = UDim2.new(1, -20, 0, 30)
+    DropdownFrame.BackgroundColor3 = THEME.Card
+    DropdownFrame.ZIndex = 15
+    DropdownFrame.Parent = self.Tabs[tab].Frame
+    
+    local DropdownLabel = Instance.new("TextLabel")
+    DropdownLabel.Size = UDim2.new(1, -30, 1, 0)
+    DropdownLabel.Position = UDim2.new(0, 10, 0, 0)
+    DropdownLabel.BackgroundTransparency = 1
+    DropdownLabel.Text = text .. ": " .. (default or "Selecionar")
+    DropdownLabel.Font = Enum.Font.Gotham
+    DropdownLabel.TextColor3 = THEME.Text
+    DropdownLabel.TextSize = 13
+    DropdownLabel.TextXAlignment = Enum.TextXAlignment.Left
+    DropdownLabel.ZIndex = 16
+    DropdownLabel.Parent = DropdownFrame
+    
+    local DropdownButton = Instance.new("TextButton")
+    DropdownButton.Size = UDim2.new(0, 20, 0, 20)
+    DropdownButton.Position = UDim2.new(1, -25, 0.5, -10)
+    DropdownButton.Text = "▼"
+    DropdownButton.Font = Enum.Font.GothamBold
+    DropdownButton.TextSize = 12
+    DropdownButton.BackgroundColor3 = THEME.Primary
+    DropdownButton.TextColor3 = THEME.Text
+    DropdownButton.AutoButtonColor = false
+    DropdownButton.ZIndex = 16
+    DropdownButton.Parent = DropdownFrame
+    
+    local OptionsFrame = Instance.new("ScrollingFrame")
+    OptionsFrame.Size = UDim2.new(1, 0, 0, 0)
+    OptionsFrame.Position = UDim2.new(0, 0, 1, 2)
+    OptionsFrame.BackgroundColor3 = THEME.Secondary
+    OptionsFrame.BorderSizePixel = 0
+    OptionsFrame.ScrollBarThickness = 4
+    OptionsFrame.ScrollBarImageColor3 = THEME.Primary
+    OptionsFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    OptionsFrame.ClipsDescendants = true
+    OptionsFrame.ZIndex = 20
+    OptionsFrame.Parent = DropdownFrame
+    
+    local OptionsLayout = Instance.new("UIListLayout")
+    OptionsLayout.Parent = OptionsFrame
+    
+    local open = false
+    local selected = default
+    
+    for _, option in ipairs(options) do
+        local OptionButton = Instance.new("TextButton")
+        OptionButton.Size = UDim2.new(1, -4, 0, 25)
+        OptionButton.Position = UDim2.new(0, 2, 0, 0)
+        OptionButton.Text = option
+        OptionButton.BackgroundColor3 = THEME.Card
+        OptionButton.Font = Enum.Font.Gotham
+        OptionButton.TextSize = 12
+        OptionButton.TextColor3 = THEME.Text
+        OptionButton.AutoButtonColor = false
+        OptionButton.ZIndex = 21
+        OptionButton.Parent = OptionsFrame
+        
+        CreateHoverEffect(OptionButton, THEME.Card, THEME.Primary)
+        
+        OptionButton.MouseButton1Click:Connect(function()
+            selected = option
+            DropdownLabel.Text = text .. ": " .. option
+            callback(option)
+            ToggleDropdown(false)
+        end)
+    end
+    
+    local function ToggleDropdown(forceState)
+        open = forceState or not open
+        local goalSize = open and UDim2.new(1, 0, 0, math.min(#options * 27, 135)) or UDim2.new(1, 0, 0, 0)
+        
+        CreateTween(OptionsFrame, {Size = goalSize}, 0.3, EasingStyles.Smooth):Play()
+        CreateTween(DropdownButton, {Rotation = open and 180 or 0}, 0.3):Play()
+        
+        if open then
+            OptionsFrame.CanvasSize = UDim2.new(0, 0, 0, #options * 27)
+        end
+    end
+    
+    DropdownButton.MouseButton1Click:Connect(function()
+        ToggleDropdown()
+    end)
+    
+    CreateHoverEffect(DropdownButton, THEME.Primary, THEME.Highlight)
+    
+    return DropdownFrame
 end
+
+function FlexUI:AddTextBox(tab, text, placeholder, callback)
+    local TextBoxFrame = Instance.new("Frame")
+    TextBoxFrame.Size = UDim2.new(1, -20, 0, 35)
+    TextBoxFrame.BackgroundTransparency = 1
+    TextBoxFrame.ZIndex = 9
+    TextBoxFrame.Parent = self.Tabs[tab].Frame
+    
+    local TextBox = Instance.new("TextBox")
+    TextBox.Size = UDim2.new(1, 0, 1, 0)
+    TextBox.BackgroundColor3 = THEME.Card
+    TextBox.BorderSizePixel = 0
+    TextBox.Text = text or ""
+    TextBox.PlaceholderText = placeholder or "Digite aqui..."
+    TextBox.Font = Enum.Font.Gotham
+    TextBox.TextColor3 = THEME.Text
+    TextBox.TextSize = 13
+    TextBox.ZIndex = 10
+    TextBox.Parent = TextBoxFrame
+    
+    local function Focus()
+        CreateTween(TextBox, {BackgroundColor3 = THEME.Primary}, 0.2):Play()
+    end
+    
+    local function Unfocus()
+        CreateTween(TextBox, {BackgroundColor3 = THEME.Card}, 0.2):Play()
+    end
+    
+    TextBox.Focused:Connect(Focus)
+    TextBox.FocusLost:Connect(function(enterPressed)
+        Unfocus()
+        if enterPressed then
+            callback(TextBox.Text)
+        end
+    end)
+    
+    return TextBox
+end
+
+function FlexUI:AddKeybind(tab, text, defaultKey, callback)
+    local KeybindFrame = Instance.new("Frame")
+    KeybindFrame.Size = UDim2.new(1, -20, 0, 30)
+    KeybindFrame.BackgroundTransparency = 1
+    KeybindFrame.ZIndex = 9
+    KeybindFrame.Parent = self.Tabs[tab].Frame
+    
+    local KeybindLabel = Instance.new("TextLabel")
+    KeybindLabel.Size = UDim2.new(1, -80, 1, 0)
+    KeybindLabel.BackgroundTransparency = 1
+    KeybindLabel.Text = text
+    KeybindLabel.Font = Enum.Font.Gotham
+    KeybindLabel.TextColor3 = THEME.Text
+    KeybindLabel.TextSize = 13
+    KeybindLabel.TextXAlignment = Enum.TextXAlignment.Left
+    KeybindLabel.ZIndex = 10
+    KeybindLabel.Parent = KeybindFrame
+    
+    local KeybindButton = Instance.new("TextButton")
+    KeybindButton.Size = UDim2.new(0, 70, 0, 25)
+    KeybindButton.Position = UDim2.new(1, -70, 0.5, -12.5)
+    KeybindButton.BackgroundColor3 = THEME.Card
+    KeybindButton.Text = defaultKey.Name
+    KeybindButton.Font = Enum.Font.Gotham
+    KeybindButton.TextColor3 = THEME.Text
+    KeybindButton.TextSize = 12
+    KeybindButton.AutoButtonColor = false
+    KeybindButton.ZIndex = 10
+    KeybindButton.Parent = KeybindFrame
+    
+    local listening = false
+    local currentKey = defaultKey
+    
+    local function StartListening()
+        listening = true
+        KeybindButton.Text = "..."
+        CreateTween(KeybindButton, {BackgroundColor3 = THEME.Highlight}, 0.2):Play()
+    end
+    
+    local function StopListening(newKey)
+        listening = false
+        currentKey = newKey or currentKey
+        KeybindButton.Text = currentKey.Name
+        CreateTween(KeybindButton, {BackgroundColor3 = THEME.Card}, 0.2):Play()
+        callback(currentKey)
+    end
+    
+    KeybindButton.MouseButton1Click:Connect(StartListening)
+    
+    local inputConnection
+    inputConnection = UserInputService.InputBegan:Connect(function(input)
+        if listening then
+            if input.UserInputType == Enum.UserInputType.Keyboard then
+                StopListening(input.KeyCode)
+            end
+        elseif input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == currentKey then
+            callback(currentKey)
+        end
+    end)
+    
+    table.insert(FlexUI.Connections, inputConnection)
+    CreateHoverEffect(KeybindButton, THEME.Card, THEME.Primary)
+    
+    return KeybindFrame
+end
+
+--===[ FUNÇÕES UTILITÁRIAS ]===--
+function FlexUI:Show()
+    MenuGui.Enabled = true
+    MainFrame.Size = UDim2.new(0, 0, 0, 0)
+    CreateTween(MainFrame, {Size = UDim2.new(0, 650, 0, 450)}, 0.5, EasingStyles.Elastic):Play()
+    CreateTween(Blur, {Size = 10}, 0.3):Play()
+end
+
+function FlexUI:Hide()
+    CreateTween(MainFrame, {Size = UDim2.new(0, 0, 0, 0)}, 0.3, EasingStyles.Smooth):Play()
+    CreateTween(Blur, {Size = 0}, 0.3):Play()
+    wait(0.3)
+    MenuGui.Enabled = false
+end
+
+function FlexUI:Destroy()
+    for _, connection in ipairs(FlexUI.Connections) do
+        connection:Disconnect()
+    end
+    MenuGui:Destroy()
+    Blur:Destroy()
+end
+
+--===[ INICIALIZAÇÃO ]===--
+CreateTween(Blur, {Size = 10}, 0.5):Play()
 
 return FlexUI
