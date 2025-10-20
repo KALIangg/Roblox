@@ -570,17 +570,21 @@ local function createLogsGui(titleText, storedTable)
 end
 
 do
-    local channel = TextChatService:WaitForChild("TextChannels"):WaitForChild("RBXGeneral")
-    channel.MessageReceived:Connect(function(msg)
-        local author = msg.TextSource and msg.TextSource.Name or "Sistema"
-        local message = msg.Text
-        local time = os.date("%H:%M:%S")
-        local entry = { time = time, author = author, message = message }
-        table.insert(chatStoredLogs, entry)
-        if startsWithPrefix(message) then
-            table.insert(cmdStoredLogs, entry)
-        end
-    end)
+    local channel = TextChatService:WaitForChild("TextChannels"):FindFirstChild("RBXGeneral")
+    if channel then
+        channel.MessageReceived:Connect(function(msg)
+            local author = msg.TextSource and msg.TextSource.Name or "Sistema"
+            local message = msg.Text
+            local time = os.date("%H:%M:%S")
+            local entry = { time = time, author = author, message = message }
+            table.insert(chatStoredLogs, entry)
+            if startsWithPrefix(message) then
+                table.insert(cmdStoredLogs, entry)
+            end
+        end)
+    else
+        warn("Não existe channel!")
+    end
 end
 
 RegisterCommand("chatlogs", function()
@@ -1342,8 +1346,8 @@ local weaponNames = {
 }
 
 -- Flags
-ESPEnabled, ESPGun, ESPBox, ESPmoney, ESPTracer, ESPName, ESPDistance, ESPSkeleton =
-	false, false, false, false, false, false, false, false
+ESPEnabled, ESPGun, ESPBox, ESPmoney, ESPTracer, ESPName, ESPDistance, ESPSkeleton, ESPTeams, ESPWall =
+	false, false, false, false, false, false, false, false, false, false
 
 local espElements = {}
 
@@ -1388,6 +1392,35 @@ local function findLowestYPart(character)
 	return lowestPart
 end
 
+-- Função CORRIGIDA para verificar se o jogador está atrás de parede
+local function isBehindWall(targetPosition, targetCharacter)
+	if not localPlayer.Character or not targetCharacter then return false end
+	
+	local localHead = localPlayer.Character:FindFirstChild("Head")
+	if not localHead then return false end
+	
+	local localPosition = localHead.Position
+	
+	-- Criar um raycast da câmera até o alvo
+	local raycastParams = RaycastParams.new()
+	raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+	raycastParams.FilterDescendantsInstances = {localPlayer.Character, targetCharacter}
+	
+	local direction = (targetPosition - localPosition)
+	local raycastResult = workspace:Raycast(localPosition, direction.Unit * math.min(direction.Magnitude * 1.1, 1000), raycastParams)
+	
+	if raycastResult then
+		-- Verificar se o raycast atingiu algo antes de chegar no alvo
+		local distanceToTarget = (targetPosition - localPosition).Magnitude
+		local distanceToHit = (raycastResult.Position - localPosition).Magnitude
+		
+		-- Se atingiu algo antes do alvo (com margem de erro), está atrás de parede
+		return distanceToHit < distanceToTarget - 2
+	end
+	
+	return false
+end
+
 local function removeESP(player)
 	local e = espElements[player]
 	if e then
@@ -1400,11 +1433,31 @@ local function removeESP(player)
 		safeRemoveDrawing(e.statusText)
 		safeRemoveDrawing(e.bankText)
 		safeRemoveDrawing(e.carteiraText)
+		safeRemoveDrawing(e.wallText)
 		if e.skeletonLines then
 			for _, line in ipairs(e.skeletonLines) do safeRemoveDrawing(line) end
 		end
 		espElements[player] = nil
 	end
+end
+
+local function getTeamColor(player)
+    if not ESPTeams then return Color3.new(1,1,1) end
+    
+    local localTeam = localPlayer.Team
+    local playerTeam = player.Team
+    
+    -- Se não há sistema de times ou ambos estão sem time
+    if not localTeam or not playerTeam then
+        return Color3.new(1,1,1) -- Branco para neutro/sem time
+    end
+    
+    -- Se estão no mesmo time
+    if localTeam == playerTeam then
+        return Color3.fromRGB(0, 255, 0) -- Verde para aliados
+    else
+        return Color3.fromRGB(255, 0, 0) -- Vermelho para inimigos
+    end
 end
 
 local function createESP(player)
@@ -1448,6 +1501,13 @@ local function createESP(player)
 	carteiraText.Color = Color3.fromRGB(255,255,0)
 	carteiraText.Visible = false
 
+	local wallText = Drawing.new("Text")
+	wallText.Size = 14
+	wallText.Center = true
+	wallText.Outline = true
+	wallText.Color = Color3.fromRGB(255, 165, 0) -- Laranja para indicador de parede
+	wallText.Visible = false
+
 	local skeletonLines = {}
 	local skeletonPairs = {}
 
@@ -1473,6 +1533,7 @@ local function createESP(player)
 			statusText.Visible = false
 			bankText.Visible = false
 			carteiraText.Visible = false
+			wallText.Visible = false
 			for _, l in ipairs(skeletonLines) do l.Visible = false end
 			return
 		end
@@ -1483,6 +1544,7 @@ local function createESP(player)
 		if not root then
 			box.Visible = false
 			for _, l in ipairs(skeletonLines) do l.Visible = false end
+			wallText.Visible = false
 			return
 		end
 
@@ -1531,6 +1593,7 @@ local function createESP(player)
 			statusText.Visible = false
 			bankText.Visible = false
 			carteiraText.Visible = false
+			wallText.Visible = false
 			for _, l in ipairs(skeletonLines) do l.Visible = false end
 			return
 		end
@@ -1542,11 +1605,23 @@ local function createESP(player)
 		local screenY = topScreen.Y
 		local dist = (camera.CFrame.Position - root.Position).Magnitude
 
+        -- Aplicar cores baseadas no time
+        local teamColor = getTeamColor(player)
+        local isAdmin = Administrators[player.Name]
+        local finalColor = isAdmin and Color3.fromRGB(255,0,0) or teamColor
+
+		-- Verificar se está atrás de parede (ESPWall) - CORRIGIDO
+		local behindWall = false
+		if ESPWall then
+			behindWall = isBehindWall(headPart and headPart.Position or root.Position, char)
+		end
+
 		if ESPBox then
 			box.Size = Vector2.new(width, height)
 			box.Position = Vector2.new(screenX - width/2, screenY)
 			box.Visible = true
-			box.Color = Administrators[player.Name] and Color3.fromRGB(255,0,0) or Color3.fromRGB(255,255,255)
+			-- Se estiver atrás de parede, usar cor diferente
+			box.Color = behindWall and Color3.fromRGB(255, 165, 0) or finalColor
 		else
 			box.Visible = false
 		end
@@ -1555,25 +1630,56 @@ local function createESP(player)
 			local lp = camera:WorldToViewportPoint(localPlayer.Character.HumanoidRootPart.Position)
 			tracer.From = Vector2.new(lp.X, lp.Y)
 			tracer.To = Vector2.new(topScreen.X, topScreen.Y + height/2)
-			tracer.Color = Administrators[player.Name] and Color3.fromRGB(255,0,0) or Color3.fromRGB(255,255,255)
+			-- Se estiver atrás de parede, usar cor diferente
+			tracer.Color = behindWall and Color3.fromRGB(255, 165, 0) or finalColor
 			tracer.Visible = true
 		else
 			tracer.Visible = false
 		end
 
-		if ESPName or ESPDistance then
-			local isAdmin = Administrators[player.Name]
+		if ESPName or ESPDistance or ESPTeams then
 			local txt = ESPName and player.Name or ""
-			if ESPDistance then txt = txt .. string.format(" [%.1fm]", dist) end
-			local teamName = player.Team and player.Team.Name or "Sem Time"
-			if isAdmin then teamName = teamName .. " - [ADM]" end
-			txt = txt .. "\nTime: " .. teamName
+            local teamName = player.Team and player.Team.Name or "Sem Time"
+            if isAdmin then teamName = teamName .. " - [ADM]" end
+			
+			if ESPDistance then 
+				txt = txt .. string.format(" [%.1fm]", dist) 
+			end
+			
+			-- Só mostrar time se ESPTeams estiver ativo
+			if ESPTeams then
+				if txt ~= "" then
+					txt = txt .. "\nTime: " .. teamName
+				else
+					txt = "Time: " .. teamName
+				end
+			end
+			
+			-- Adicionar indicador de parede se estiver atrás
+			if behindWall then
+				txt = txt .. "\n🚧 ATRÁS DE PAREDE"
+			end
+			
 			text.Text = txt
 			text.Position = Vector2.new(screenX, screenY - 15)
-			text.Color = isAdmin and Color3.fromRGB(255,0,0) or Color3.fromRGB(255,255,255)
+			text.Color = behindWall and Color3.fromRGB(255, 165, 0) or finalColor
 			text.Visible = true
+        else
+            text.Visible = false
+		end
+
+		-- Indicador de parede separado (ESPWall)
+		if ESPWall then
+			if behindWall then
+				wallText.Text = "🚧 PAREDE"
+				wallText.Position = Vector2.new(screenX, screenY + height + 55)
+				wallText.Color = Color3.fromRGB(255, 165, 0)
+				wallText.Visible = true
+			else
+				wallText.Visible = false
+			end
 		else
-			text.Visible = false
+			wallText.Visible = false
 		end
 
 		if ESPGun then
@@ -1609,12 +1715,12 @@ local function createESP(player)
 				local carteira = stats:FindFirstChild("Carteira")
 				if bank then
 					bankText.Text = "💰 Bank: R$" .. tostring(bank.Value)
-					bankText.Position = Vector2.new(screenX, screenY + height + 25)
+					bankText.Position = Vector2.new(screenX, screenY + height + 20)
 					bankText.Visible = true
 				else bankText.Visible = false end
 				if carteira then
 					carteiraText.Text = "👜 Carteira: R$" .. tostring(carteira.Value)
-					carteiraText.Position = Vector2.new(screenX, screenY + height + 40)
+					carteiraText.Position = Vector2.new(screenX, screenY + height + 35)
 					carteiraText.Visible = true
 				else carteiraText.Visible = false end
 			else
@@ -1638,7 +1744,7 @@ local function createESP(player)
 						skeletonLines[i].From = Vector2.new(s1.X, s1.Y)
 						skeletonLines[i].To = Vector2.new(s2.X, s2.Y)
 						skeletonLines[i].Visible = true
-						skeletonLines[i].Color = Administrators[player.Name] and Color3.fromRGB(255,0,0) or Color3.fromRGB(255,255,255)
+						skeletonLines[i].Color = behindWall and Color3.fromRGB(255, 165, 0) or finalColor
 					else
 						skeletonLines[i].Visible = false
 					end
@@ -1658,6 +1764,7 @@ local function createESP(player)
 		statusText = statusText,
 		bankText = bankText,
 		carteiraText = carteiraText,
+		wallText = wallText,
 		skeletonLines = skeletonLines,
 		conn = conn
 	}
@@ -1671,7 +1778,7 @@ local function createESP(player)
 	end
 end
 
--- === Correção principal: sempre recriar ESP no respawn ===
+-- === Sistema principal ===
 local function setupPlayer(plr)
 	if plr == localPlayer then return end
 
@@ -1695,16 +1802,18 @@ local function setupPlayer(plr)
 	plr.CharacterAdded:Connect(onCharacterAdded)
 end
 
+-- Inicializar para jogadores existentes
 for _, plr in ipairs(Players:GetPlayers()) do
 	setupPlayer(plr)
 end
 
+-- Conectar eventos
 Players.PlayerAdded:Connect(setupPlayer)
 Players.PlayerRemoving:Connect(function(p)
 	removeESP(p)
 end)
 
-print("Sistema de visuals carregado.")
+print("Sistema de visuals carregado. ESPWall disponível!")
 
 
 
@@ -1869,6 +1978,28 @@ sections.Section1:AddToggle({
 	risky = false,
 	callback = function(val)
 		ESPDistance = val
+	end
+})
+
+sections.Section1:AddToggle({
+	enabled = true,
+	text = "ESP Wall",
+	flag = "ESPWall",
+	tooltip = "ESP Wall",
+	risky = false,
+	callback = function(val)
+		ESPWall = val
+	end
+})
+
+sections.Section1:AddToggle({
+	enabled = true,
+	text = "ESP Times",
+	flag = "ESPTimes",
+	tooltip = "ESP Times",
+	risky = false,
+	callback = function(val)
+		ESPTeams = val
 	end
 })
 
