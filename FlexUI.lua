@@ -175,6 +175,16 @@ local function ToggleSidebar(open)
     CreateTween(Sidebar, {Size = goalSize}, 0.4, EasingStyles.Smooth):Play()
     CreateTween(TabsContainer, {Position = goalTabPos, Size = goalTabSize}, 0.4, EasingStyles.Smooth):Play()
     
+    -- Animar elementos da sidebar
+    for _, child in ipairs(Sidebar:GetChildren()) do
+        if child:IsA("TextButton") and child.Name == "TabButton" then
+            local tabName = child:FindFirstChild("TabName")
+            if tabName then
+                CreateTween(tabName, {TextTransparency = open and 0 or 1}, 0.3):Play()
+            end
+        end
+    end
+    
     wait(0.4)
     sidebarDebounce = false
 end
@@ -230,6 +240,14 @@ local function CreateHoverEffect(button, normalColor, hoverColor)
     table.insert(FlexUI.Connections, connection2)
 end
 
+-- Função para criar cantos arredondados
+local function ApplyCornerRadius(object, radius)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, radius)
+    corner.Parent = object
+    return corner
+end
+
 --===[ SISTEMA DE NOTIFICAÇÕES AVANÇADO ]===--
 local NotificationsFolder = Instance.new("Frame")
 NotificationsFolder.Size = UDim2.new(0, 320, 0, 500)
@@ -261,13 +279,18 @@ function FlexUI:Notify(type, title, message, duration)
     Notification.ZIndex = 101
     Notification.Parent = NotificationsFolder
     
+    ApplyCornerRadius(Notification, 8)
+    
     -- Barra lateral colorida
     local AccentBar = Instance.new("Frame")
-    AccentBar.Size = UDim2.new(0, 4, 1, 0)
+    AccentBar.Size = UDim2.new(0, 4, 1, -10)
+    AccentBar.Position = UDim2.new(0, 0, 0, 5)
     AccentBar.BackgroundColor3 = TypeData.Color
     AccentBar.BorderSizePixel = 0
     AccentBar.ZIndex = 102
     AccentBar.Parent = Notification
+    
+    ApplyCornerRadius(AccentBar, 2)
     
     -- Ícone
     local Icon = Instance.new("TextLabel")
@@ -341,12 +364,16 @@ end
 
 function FlexUI:AddTab(name, icon)
     local TabButton = Instance.new("TextButton")
+    TabButton.Name = "TabButton"
     TabButton.Size = UDim2.new(1, -10, 0, 40)
     TabButton.BackgroundColor3 = THEME.Card
     TabButton.Text = ""
     TabButton.AutoButtonColor = false
     TabButton.ZIndex = 11
     TabButton.Parent = Sidebar
+    
+    -- Aplicar cantos arredondados
+    ApplyCornerRadius(TabButton, 12)
     
     -- Ícone da tab
     local TabIcon = Instance.new("TextLabel")
@@ -362,6 +389,7 @@ function FlexUI:AddTab(name, icon)
     
     -- Nome da tab (visível apenas quando expandido)
     local TabName = Instance.new("TextLabel")
+    TabName.Name = "TabName"
     TabName.Size = UDim2.new(1, -10, 0, 20)
     TabName.Position = UDim2.new(0, 5, 0, 30)
     TabName.BackgroundTransparency = 1
@@ -371,7 +399,7 @@ function FlexUI:AddTab(name, icon)
     TabName.TextColor3 = THEME.Text
     TabName.TextXAlignment = Enum.TextXAlignment.Center
     TabName.ZIndex = 12
-    TabName.Visible = false
+    TabName.TextTransparency = 1 -- Inicialmente transparente
     TabName.Parent = TabButton
     
     -- Frame da tab
@@ -400,13 +428,6 @@ function FlexUI:AddTab(name, icon)
     Layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
         TabFrame.CanvasSize = UDim2.new(0, 0, 0, Layout.AbsoluteContentSize.Y + 10)
     end)
-    
-    -- Mostrar nome quando sidebar expandir
-    local function UpdateTabVisibility()
-        TabName.Visible = sidebarOpen
-    end
-    
-    Sidebar:GetPropertyChangedSignal("Size"):Connect(UpdateTabVisibility)
     
     -- Sistema de clique
     TabButton.MouseButton1Click:Connect(function()
@@ -454,6 +475,8 @@ function FlexUI:AddSection(tab, title)
     Section.ZIndex = 9
     Section.Parent = self.Tabs[tab].Frame
     
+    ApplyCornerRadius(Section, 8)
+    
     local SectionTitle = Instance.new("TextLabel")
     SectionTitle.Size = UDim2.new(1, -20, 1, 0)
     SectionTitle.Position = UDim2.new(0, 10, 0, 0)
@@ -495,6 +518,8 @@ function FlexUI:AddButton(tab, text, callback)
     Button.ZIndex = 9
     Button.Parent = self.Tabs[tab].Frame
     
+    ApplyCornerRadius(Button, 8)
+    
     CreateHoverEffect(Button, THEME.Card, THEME.Primary)
     
     Button.MouseButton1Click:Connect(function()
@@ -534,6 +559,8 @@ function FlexUI:AddToggle(tab, text, default, callback)
     ToggleButton.ZIndex = 10
     ToggleButton.Parent = ToggleFrame
     
+    ApplyCornerRadius(ToggleButton, 10)
+    
     local ToggleKnob = Instance.new("Frame")
     ToggleKnob.Size = UDim2.new(0, 16, 0, 16)
     ToggleKnob.Position = UDim2.new(0, default and 22 or 2, 0.5, -8)
@@ -541,6 +568,8 @@ function FlexUI:AddToggle(tab, text, default, callback)
     ToggleKnob.BorderSizePixel = 0
     ToggleKnob.ZIndex = 11
     ToggleKnob.Parent = ToggleButton
+    
+    ApplyCornerRadius(ToggleKnob, 8)
     
     local state = default
     
@@ -591,12 +620,16 @@ function FlexUI:AddSlider(tab, text, min, max, default, callback)
     SliderTrack.ZIndex = 10
     SliderTrack.Parent = SliderFrame
     
+    ApplyCornerRadius(SliderTrack, 3)
+    
     local SliderFill = Instance.new("Frame")
     SliderFill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
     SliderFill.BackgroundColor3 = THEME.Primary
     SliderFill.BorderSizePixel = 0
     SliderFill.ZIndex = 11
     SliderFill.Parent = SliderTrack
+    
+    ApplyCornerRadius(SliderFill, 3)
     
     local SliderButton = Instance.new("TextButton")
     SliderButton.Size = UDim2.new(0, 16, 0, 16)
@@ -606,6 +639,8 @@ function FlexUI:AddSlider(tab, text, min, max, default, callback)
     SliderButton.AutoButtonColor = false
     SliderButton.ZIndex = 12
     SliderButton.Parent = SliderTrack
+    
+    ApplyCornerRadius(SliderButton, 8)
     
     local dragging = false
     
@@ -656,6 +691,8 @@ function FlexUI:AddDropdown(tab, text, options, default, callback)
     DropdownFrame.ZIndex = 15
     DropdownFrame.Parent = self.Tabs[tab].Frame
     
+    ApplyCornerRadius(DropdownFrame, 6)
+    
     local DropdownLabel = Instance.new("TextLabel")
     DropdownLabel.Size = UDim2.new(1, -30, 1, 0)
     DropdownLabel.Position = UDim2.new(0, 10, 0, 0)
@@ -680,6 +717,8 @@ function FlexUI:AddDropdown(tab, text, options, default, callback)
     DropdownButton.ZIndex = 16
     DropdownButton.Parent = DropdownFrame
     
+    ApplyCornerRadius(DropdownButton, 4)
+    
     local OptionsFrame = Instance.new("ScrollingFrame")
     OptionsFrame.Size = UDim2.new(1, 0, 0, 0)
     OptionsFrame.Position = UDim2.new(0, 0, 1, 2)
@@ -691,6 +730,8 @@ function FlexUI:AddDropdown(tab, text, options, default, callback)
     OptionsFrame.ClipsDescendants = true
     OptionsFrame.ZIndex = 20
     OptionsFrame.Parent = DropdownFrame
+    
+    ApplyCornerRadius(OptionsFrame, 6)
     
     local OptionsLayout = Instance.new("UIListLayout")
     OptionsLayout.Parent = OptionsFrame
@@ -710,6 +751,8 @@ function FlexUI:AddDropdown(tab, text, options, default, callback)
         OptionButton.AutoButtonColor = false
         OptionButton.ZIndex = 21
         OptionButton.Parent = OptionsFrame
+        
+        ApplyCornerRadius(OptionButton, 4)
         
         CreateHoverEffect(OptionButton, THEME.Card, THEME.Primary)
         
@@ -761,6 +804,8 @@ function FlexUI:AddTextBox(tab, text, placeholder, callback)
     TextBox.ZIndex = 10
     TextBox.Parent = TextBoxFrame
     
+    ApplyCornerRadius(TextBox, 6)
+    
     local function Focus()
         CreateTween(TextBox, {BackgroundColor3 = THEME.Primary}, 0.2):Play()
     end
@@ -810,6 +855,8 @@ function FlexUI:AddKeybind(tab, text, defaultKey, callback)
     KeybindButton.ZIndex = 10
     KeybindButton.Parent = KeybindFrame
     
+    ApplyCornerRadius(KeybindButton, 6)
+    
     local listening = false
     local currentKey = defaultKey
     
@@ -845,6 +892,34 @@ function FlexUI:AddKeybind(tab, text, defaultKey, callback)
     
     return KeybindFrame
 end
+
+--===[ SISTEMA DE RESPONSIVIDADE PARA MOBILE ]===--
+local function UpdateResponsiveLayout()
+    local viewportSize = workspace.CurrentCamera.ViewportSize
+    
+    if viewportSize.X <= 600 then -- Mobile
+        MainFrame.Size = UDim2.new(0.9, 0, 0.8, 0)
+        MainFrame.Position = UDim2.new(0.05, 0, 0.1, 0)
+        
+        -- Sidebar menor para mobile
+        Sidebar.Size = UDim2.new(0, 50, 1, -45)
+        TabsContainer.Position = UDim2.new(0, 50, 0, 45)
+        TabsContainer.Size = UDim2.new(1, -50, 1, -45)
+        
+    else -- Desktop
+        MainFrame.Size = UDim2.new(0, 650, 0, 450)
+        MainFrame.Position = UDim2.new(0.5, -325, 0.5, -225)
+        
+        Sidebar.Size = UDim2.new(0, 60, 1, -45)
+        TabsContainer.Position = UDim2.new(0, 60, 0, 45)
+        TabsContainer.Size = UDim2.new(1, -60, 1, -45)
+    end
+end
+
+-- Atualizar layout quando a tela mudar de tamanho
+UserInputService.WindowFocusReleased:Connect(UpdateResponsiveLayout)
+workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(UpdateResponsiveLayout)
+UpdateResponsiveLayout()
 
 --===[ FUNÇÕES UTILITÁRIAS ]===--
 function FlexUI:Show()
