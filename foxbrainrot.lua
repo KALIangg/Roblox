@@ -1,5 +1,5 @@
--- 🦊 Fox Panel | v1.6.0
--- 🔧 FlexUI Integration (KALIangg)
+-- 🦊 Fox Panel | v2.0.0
+-- 🔧 FlexUI Integration (KALIangg) - Versão Corrigida
 -- ⚙️ Funcionalidades: Auto Kick, No Cooldown, Super Jump, Speed Glitch
 -- ❤️ Tema vermelho translúcido premium
 
@@ -9,60 +9,112 @@ local Players = game:GetService("Players")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
 
 local player = Players.LocalPlayer
 
---===[ SETUP UI ]===--
-FlexUI:SetTitle("Fox Panel - v1.6.0")
+--===[ CONFIGURAÇÃO DE TEMA PERSONALIZADO ]===--
+local CUSTOM_THEME = {
+    Primary = Color3.fromRGB(220, 60, 60),    -- Vermelho mais vibrante
+    Secondary = Color3.fromRGB(30, 25, 35),   -- Fundo escuro com tom roxo
+    Background = Color3.fromRGB(20, 15, 25),  -- Fundo mais escuro
+    Card = Color3.fromRGB(40, 35, 50),        -- Cards com tom roxo
+    Text = Color3.fromRGB(255, 255, 255),     -- Texto branco puro
+    Highlight = Color3.fromRGB(255, 100, 100),-- Destaque mais suave
+    Success = Color3.fromRGB(80, 200, 80),    -- Verde sucesso
+    Error = Color3.fromRGB(220, 80, 80),      -- Vermelho erro
+    Warning = Color3.fromRGB(255, 200, 80),   -- Amarelo alerta
+    Info = Color3.fromRGB(80, 170, 255)       -- Azul informação
+}
 
--- Adicionar tabs com ícones
+--===[ SETUP UI PREMIUM ]===--
+FlexUI:SetTitle("🦊 Fox Panel Premium v2.0.0")
+
+-- Adicionar tabs com ícones modernos
 local HomeTab = FlexUI:AddTab("Início", "🏠")
-local PlayerTab = FlexUI:AddTab("Player", "👤")
-local MiscTab = FlexUI:AddTab("Misc", "⚙️")
+local PlayerTab = FlexUI:AddTab("Player", "🎯")
+local BrainrotTab = FlexUI:AddTab("Brainrot", "🧠")
+local MiscTab = FlexUI:AddTab("Utilitários", "⚡")
 
---===[ FUNÇÕES DE BUSCA BRAINROT ]===--
+--===[ SISTEMA DE CONFIGURAÇÃO ]===--
+local Config = {
+    AutoKick = {
+        Enabled = false,
+        Target = nil,
+        Method = "Block"
+    },
+    SpeedGlitch = {
+        Enabled = false,
+        Force = 16.2,
+        Cooldown = 0.2
+    },
+    Notifications = {
+        PlayerJoinLeave = true,
+        BrainrotInfo = true
+    },
+    ESP = {
+        Enabled = false,
+        Range = 100
+    }
+}
+
+--===[ FUNÇÕES DE BUSCA BRAINROT OTIMIZADAS ]===--
+local BrainrotCache = {}
 local function FindPlayerBrainrotInfo(playerName)
-    -- Procura pelos plots no workspace
+    -- Verificar cache primeiro
+    if BrainrotCache[playerName] then
+        return BrainrotCache[playerName]
+    end
+
+    local startTime = os.clock()
+    
     for _, plot in pairs(Workspace.Plots:GetChildren()) do
-        if plot:FindFirstChild("Owner") then
-            local ownerValue = plot.Owner
-            if ownerValue and ownerValue.Value == playerName then
-                -- Encontrou o plot do player, agora procura pelo melhor brainrot
-                if plot:FindFirstChild("AnimalPodiums") then
-                    local bestBrainrot = nil
-                    local highestGeneration = 0
-                    
-                    for _, podium in pairs(plot.AnimalPodiums:GetChildren()) do
-                        if podium:FindFirstChild("Base") and podium.Base:FindFirstChild("Spawn") then
-                            local attach = podium.Base.Spawn:FindFirstChild("Attachment")
-                            if attach and attach:FindFirstChild("AnimalOverhead") then
-                                local overhead = attach.AnimalOverhead
-                                local displayLabel = overhead:FindFirstChild("DisplayName")
-                                local mutationLabel = overhead:FindFirstChild("Mutation")
-                                local generationLabel = overhead:FindFirstChild("Generation")
-                                
-                                if displayLabel and mutationLabel and generationLabel then
-                                    -- Tenta extrair o número da generation
-                                    local genText = generationLabel.Text
-                                    local genNumber = tonumber(genText:match("%d+")) or 0
+        if plot:FindFirstChild("Owner") and plot.Owner.Value == playerName then
+            if plot:FindFirstChild("AnimalPodiums") then
+                local bestBrainrot = nil
+                local highestGeneration = 0
+                
+                for _, podium in pairs(plot.AnimalPodiums:GetChildren()) do
+                    local base = podium:FindFirstChild("Base")
+                    if base then
+                        local spawn = base:FindFirstChild("Spawn")
+                        if spawn then
+                            local attach = spawn:FindFirstChild("Attachment")
+                            if attach then
+                                local overhead = attach:FindFirstChild("AnimalOverhead")
+                                if overhead then
+                                    local displayLabel = overhead:FindFirstChild("DisplayName")
+                                    local mutationLabel = overhead:FindFirstChild("Mutation")
+                                    local generationLabel = overhead:FindFirstChild("Generation")
                                     
-                                    -- Encontra o brainrot com a generation mais alta
-                                    if genNumber > highestGeneration then
-                                        highestGeneration = genNumber
-                                        bestBrainrot = {
-                                            DisplayName = displayLabel.Text,
-                                            Mutation = mutationLabel.Text,
-                                            Generation = generationLabel.Text,
-                                            GenerationNumber = genNumber
-                                        }
+                                    if displayLabel and mutationLabel and generationLabel then
+                                        local genText = generationLabel.Text
+                                        local genNumber = tonumber(genText:match("%d+")) or 0
+                                        
+                                        if genNumber > highestGeneration then
+                                            highestGeneration = genNumber
+                                            bestBrainrot = {
+                                                DisplayName = displayLabel.Text,
+                                                Mutation = mutationLabel.Text,
+                                                Generation = generationLabel.Text,
+                                                GenerationNumber = genNumber,
+                                                Plot = plot.Name
+                                            }
+                                        end
                                     end
                                 end
                             end
                         end
                     end
-                    
-                    return bestBrainrot
                 end
+                
+                -- Cache do resultado
+                if bestBrainrot then
+                    BrainrotCache[playerName] = bestBrainrot
+                end
+                
+                return bestBrainrot
             end
         end
     end
@@ -73,314 +125,358 @@ local function GetBrainrotInfoString(playerName)
     local brainrotInfo = FindPlayerBrainrotInfo(playerName)
     
     if brainrotInfo then
-        return string.format("🧠 %s\n🎯 Gen: %s | %s", 
+        return string.format("🧠 %s\n🎯 Gen: %s | %s\n📌 Plot: %s", 
             brainrotInfo.DisplayName, 
             brainrotInfo.Generation, 
-            brainrotInfo.Mutation)
+            brainrotInfo.Mutation,
+            brainrotInfo.Plot)
     else
         return "🧠 Nenhum brainrot encontrado"
     end
 end
 
---===[ TAB INÍCIO ]===--
-FlexUI:AddSection(HomeTab, "🦊 Fox Panel v1.6.0")
-FlexUI:AddLabel(HomeTab, "👋 Bem-vindo, " .. player.Name .. "!")
-FlexUI:AddLabel(HomeTab, "Interface premium com funcionalidades avançadas")
-
-FlexUI:AddSection(HomeTab, "🚀 Status do Sistema")
-FlexUI:AddButton(HomeTab, "📊 Ver Informações do Jogador", function()
-    local info = {
-        "Nome: " .. player.Name,
-        "UserID: " .. player.UserId,
-        "Account Age: " .. player.AccountAge .. " dias",
-        "Display Name: " .. player.DisplayName
-    }
+--===[ SISTEMA DE NOTIFICAÇÕES AVANÇADO ]===--
+local function SendEnhancedNotification(title, message, duration, notificationType)
+    local emoji = ""
+    local color = CUSTOM_THEME.Info
     
-    FlexUI:Notify("Info", "Informações do Jogador", table.concat(info, "\n"), 5)
-end)
-
---===[ TAB PLAYER ]===--
-FlexUI:AddSection(PlayerTab, "🎯 Sistema de Targeting")
-
---===[ VARIÁVEIS GLOBAIS ]===--
-local selectedPlayer = nil
-local selectedMethod = "Block"
-local autoKickConn, noCooldownConn
-_G.SpeedGlitchData = {}
-
---===[ FUNÇÕES AUXILIARES ]===--
-local function GetPlayers()
-    local list = {}
-    for _, v in ipairs(Players:GetPlayers()) do
-        if v ~= player then
-            table.insert(list, v.Name)
-        end
+    if notificationType == "success" then
+        emoji = "✅"
+        color = CUSTOM_THEME.Success
+    elseif notificationType == "error" then
+        emoji = "❌"
+        color = CUSTOM_THEME.Error
+    elseif notificationType == "warning" then
+        emoji = "⚠️"
+        color = CUSTOM_THEME.Warning
+    else
+        emoji = "ℹ️"
+        color = CUSTOM_THEME.Info
     end
-    if #list == 0 then table.insert(list, "Nenhum jogador") end
-    return list
+    
+    FlexUI:Notify(notificationType:upper(), emoji .. " " .. title, message, duration or 4)
 end
 
---===[ NOTIFICAÇÕES DE PLAYER COM BRAINROT INFO ]===--
-FlexUI:AddSection(PlayerTab, "📢 Sistema de Notificações")
+--===[ TAB INÍCIO PREMIUM ]===--
+FlexUI:AddSection(HomeTab, "🌟 Fox Panel Premium v2.0.0")
 
--- Toggle para notificações de player
-local notifyPlayersToggle = false
-FlexUI:AddToggle(PlayerTab, "🔔 Notificar Entrada/Saída", false, function(state)
-    notifyPlayersToggle = state
-    if state then
-        FlexUI:Notify("Success", "Notificações Ativadas", "Você será notificado quando players entrarem/sairem\nIncluindo informações de brainrot! 🧠", 4)
+-- Status do player com design melhorado
+local playerInfoSection = FlexUI:AddSection(HomeTab, "👤 Suas Informações")
+FlexUI:AddLabel(HomeTab, "🎮 Nome: " .. player.DisplayName)
+FlexUI:AddLabel(HomeTab, "🆔 UserID: " .. player.UserId)
+FlexUI:AddLabel(HomeTab, "📅 Idade da Conta: " .. player.AccountAge .. " dias")
+
+-- Sistema de status em tempo real
+local statusSection = FlexUI:AddSection(HomeTab, "📊 Status do Sistema")
+
+local function UpdateSystemStatus()
+    local playerCount = #Players:GetPlayers()
+    local brainrotCount = 0
+    
+    -- Contar brainrots encontrados
+    for _, plr in pairs(Players:GetPlayers()) do
+        if FindPlayerBrainrotInfo(plr.Name) then
+            brainrotCount = brainrotCount + 1
+        end
+    end
+    
+    return string.format("👥 Players Online: %d\n🧠 Brainrots Ativos: %d\n⚡ Funcionalidades: 4", 
+        playerCount, brainrotCount)
+end
+
+FlexUI:AddLabel(HomeTab, UpdateSystemStatus())
+
+-- Botão de atualização de status
+FlexUI:AddButton(HomeTab, "🔄 Atualizar Status", function()
+    FlexUI:AddLabel(HomeTab, UpdateSystemStatus())
+    SendEnhancedNotification("Status Atualizado", "Informações do sistema atualizadas com sucesso!", 3, "success")
+end)
+
+--===[ TAB PLAYER AVANÇADO ]===--
+FlexUI:AddSection(PlayerTab, "🎯 Sistema de Targeting Avançado")
+
+-- Sistema de seleção de player com dropdown
+local playersList = {}
+local function UpdatePlayersList()
+    playersList = {}
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= player then
+            table.insert(playersList, plr.Name)
+        end
+    end
+    if #playersList == 0 then
+        table.insert(playersList, "Nenhum jogador online")
+    end
+    return playersList
+end
+
+-- Dropdown para seleção de player
+local selectedPlayer = nil
+FlexUI:AddDropdown(PlayerTab, "Selecionar Jogador Alvo", UpdatePlayersList(), "Nenhum", function(selected)
+    if selected ~= "Nenhum jogador online" and selected ~= "Nenhum" then
+        selectedPlayer = selected
+        Config.AutoKick.Target = selected
+        
+        -- Mostrar informações do player selecionado
+        local targetPlayer = Players:FindFirstChild(selected)
+        if targetPlayer then
+            local brainrotInfo = GetBrainrotInfoString(selected)
+            SendEnhancedNotification("🎯 Alvo Definido", 
+                string.format("Jogador: %s\nUserID: %s\n%s", 
+                    selected, 
+                    targetPlayer.UserId, 
+                    brainrotInfo), 
+                5, "success")
+        end
     else
-        FlexUI:Notify("Warning", "Notificações Desativadas", "Notificações de players desligadas", 2)
+        selectedPlayer = nil
+        Config.AutoKick.Target = nil
     end
 end)
 
--- CONEXÕES DE PLAYER ADDED / REMOVED COM BRAINROT INFO
-Players.PlayerAdded:Connect(function(plr)
-    if notifyPlayersToggle then
-        -- Notificação padrão: Player entrou
-        FlexUI:Notify("Success", plr.Name .. " entrou no jogo!", 3)
-        
-        -- Aguarda um pouco para garantir que o plot do player foi carregado
-        task.wait(2)
-        
-        -- Busca informações do brainrot do player
-        local brainrotInfo = GetBrainrotInfoString(plr.Name)
-        
-        -- Notificação info com detalhes do player E brainrot
-        FlexUI:Notify("Info", 
-            "📊 Informações de " .. plr.Name,
-            "👤 UserId: " .. plr.UserId .. 
-            "\n📅 AccountAge: " .. plr.AccountAge .. " dias" ..
-            "\n\n" .. brainrotInfo, 
-            6
-        )
-    end
-end)
-
-Players.PlayerRemoving:Connect(function(plr)
-    if notifyPlayersToggle then
-        FlexUI:Notify("Warning", plr.Name .. " saiu do jogo!", 3)
-    end
-end)
-
---===[ SISTEMA DE TARGETING ]===--
-FlexUI:AddSection(PlayerTab, "🎯 Configurações de Alvo")
-
--- Dropdown para seleção de jogador (precisaria ser adaptado para a nova UI)
-local playersList = GetPlayers()
-local selectedPlayerValue = "Nenhum jogador"
-
-FlexUI:AddLabel(PlayerTab, "🎯 Jogador Alvo: " .. (selectedPlayer or "Nenhum"))
-FlexUI:AddLabel(PlayerTab, "⚙️ Método: " .. selectedMethod)
-
+-- Botão para atualizar lista
 FlexUI:AddButton(PlayerTab, "🔄 Atualizar Lista de Players", function()
-    local currentPlayers = GetPlayers()
-    FlexUI:Notify("Info", "🎯 Players", "Lista atualizada! " .. (#currentPlayers - 1) .. " jogadores online", 3)
+    local currentPlayers = UpdatePlayersList()
+    SendEnhancedNotification("Lista Atualizada", 
+        string.format("%d jogadores online", #currentPlayers - 1), 3, "info")
 end)
 
---===[ FUNCIONALIDADES PRINCIPAIS ]===--
-FlexUI:AddSection(PlayerTab, "⚡ Funcionalidades")
+--===[ FUNCIONALIDADES PRINCIPAIS ATUALIZADAS ]===--
+FlexUI:AddSection(PlayerTab, "⚡ Funcionalidades Premium")
 
--- 🦶 AUTO KICK
-FlexUI:AddToggle(PlayerTab, "🦶 Auto Kick", false, function(state)
+-- 🦶 AUTO KICK MELHORADO
+local autoKickConnection = nil
+FlexUI:AddToggle(PlayerTab, "🦶 Auto Kick Automático", false, function(state)
+    Config.AutoKick.Enabled = state
+    
     if state then
         if not selectedPlayer then
-            FlexUI:Notify("Error", "❌ Erro", "Selecione um jogador alvo primeiro!\nUse o botão 'Atualizar Lista' e selecione um player", 4)
+            SendEnhancedNotification("Erro de Configuração", 
+                "Selecione um jogador alvo primeiro!", 4, "error")
             return
         end
         
-        autoKickConn = ProximityPromptService.PromptButtonHoldBegan:Connect(function(prompt, triggerPlayer)
-            if selectedPlayer and triggerPlayer and triggerPlayer.Name == selectedPlayer then
-                if selectedMethod == "Block" then
-                    player:BlockAsync(triggerPlayer)
-                    FlexUI:Notify("Warning", "⚠️ Jogador bloqueado automaticamente: " .. triggerPlayer.Name, 3)
-                end
+        autoKickConnection = ProximityPromptService.PromptButtonHoldBegan:Connect(function(prompt, triggerPlayer)
+            if triggerPlayer and triggerPlayer.Name == selectedPlayer then
+                player:BlockAsync(triggerPlayer)
+                SendEnhancedNotification("Auto Kick Ativado", 
+                    string.format("Jogador %s bloqueado automaticamente!", triggerPlayer.Name), 
+                    3, "warning")
             end
         end)
-        FlexUI:Notify("Success", "🦶 Auto Kick", "Auto Kick ativado para: " .. selectedPlayer, 3)
+        
+        SendEnhancedNotification("Auto Kick Ativado", 
+            string.format("Monitorando interações com: %s", selectedPlayer), 
+            4, "success")
     else
-        if autoKickConn then
-            autoKickConn:Disconnect()
-            autoKickConn = nil
+        if autoKickConnection then
+            autoKickConnection:Disconnect()
+            autoKickConnection = nil
         end
-        FlexUI:Notify("Info", "🦶 Auto Kick", "Auto Kick desativado", 2)
+        SendEnhancedNotification("Auto Kick Desativado", 
+            "Sistema de auto kick desligado", 3, "info")
     end
 end)
 
--- 💨 SPEED GLITCH
-FlexUI:AddToggle(PlayerTab, "💨 Speed Glitch", false, function(state)
-    local char = player.Character or player.CharacterAdded:Wait()
-    local hrp = char:WaitForChild("HumanoidRootPart")
-    local humanoid = char:WaitForChild("Humanoid")
+-- 💨 SPEED GLITCH OTIMIZADO
+local speedGlitchData = {
+    Connection = nil,
+    Attachment = nil,
+    Velocity = nil
+}
 
-    local extraStuds = 1.7
-    local force = 16.2
-    local cooldown = 0.2
-
-    if state then
-        local attachment = Instance.new("Attachment", hrp)
-        local vel = Instance.new("LinearVelocity", hrp)
-        vel.MaxForce = math.huge
-        vel.Attachment0 = attachment
-        vel.Enabled = false
-
-        local lastTick = 0
-        local conn
-        conn = RunService.Heartbeat:Connect(function()
+FlexUI:AddToggle(PlayerTab, "💨 Speed Glitch Premium", false, function(state)
+    Config.SpeedGlitch.Enabled = state
+    
+    local function SetupSpeedGlitch()
+        local char = player.Character or player.CharacterAdded:Wait()
+        local humanoidRootPart = char:WaitForChild("HumanoidRootPart")
+        local humanoid = char:WaitForChild("Humanoid")
+        
+        -- Limpar instâncias antigas
+        if speedGlitchData.Attachment then speedGlitchData.Attachment:Destroy() end
+        if speedGlitchData.Velocity then speedGlitchData.Velocity:Destroy() end
+        
+        -- Criar novos componentes
+        local attachment = Instance.new("Attachment", humanoidRootPart)
+        local velocity = Instance.new("LinearVelocity", humanoidRootPart)
+        velocity.MaxForce = math.huge
+        velocity.Attachment0 = attachment
+        velocity.Enabled = false
+        
+        speedGlitchData.Attachment = attachment
+        speedGlitchData.Velocity = velocity
+        
+        local lastActivation = 0
+        
+        speedGlitchData.Connection = RunService.Heartbeat:Connect(function()
             if not char or not humanoid or humanoid.Health <= 0 then
-                if conn then conn:Disconnect() end
-                if attachment then attachment:Destroy() end
-                if vel then vel:Destroy() end
                 return
             end
-            local moveDir = humanoid.MoveDirection
-            if moveDir.Magnitude > 0 then
-                local now = os.clock()
-                if now - lastTick >= cooldown then
-                    lastTick = now
-                    local direction = moveDir.Unit * extraStuds * force
-                    vel.VectorVelocity = Vector3.new(direction.X, 0, direction.Z)
-                    vel.Enabled = true
+            
+            local moveDirection = humanoid.MoveDirection
+            if moveDirection.Magnitude > 0 then
+                local currentTime = os.clock()
+                if currentTime - lastActivation >= Config.SpeedGlitch.Cooldown then
+                    lastActivation = currentTime
+                    local boost = moveDirection.Unit * 1.7 * Config.SpeedGlitch.Force
+                    velocity.VectorVelocity = Vector3.new(boost.X, 0, boost.Z)
+                    velocity.Enabled = true
+                    
                     task.delay(0.1, function()
-                        if vel and vel.Parent then
-                            vel.Enabled = false
+                        if velocity and velocity.Parent then
+                            velocity.Enabled = false
                         end
                     end)
                 end
             else
-                vel.Enabled = false
+                velocity.Enabled = false
             end
         end)
-
-        _G.SpeedGlitchData = {
-            Conn = conn,
-            Attachment = attachment,
-            Vel = vel,
-            Humanoid = humanoid,
-        }
-
-        player.CharacterAdded:Connect(function(newChar)
-            if _G.SpeedGlitchData.Conn then _G.SpeedGlitchData.Conn:Disconnect() end
-            if _G.SpeedGlitchData.Attachment then _G.SpeedGlitchData.Attachment:Destroy() end
-            if _G.SpeedGlitchData.Vel then _G.SpeedGlitchData.Vel:Destroy() end
-            _G.SpeedGlitchData = {}
-            task.wait(1)
-            if state then
-                FlexUI:Notify("Info", "⚡ Speed Glitch", "Speed Glitch reaplicado após respawn!", 3)
-            end
-        end)
-
-        FlexUI:Notify("Success", "💨 Speed Glitch", "Ativado! Use WASD para impulso.", 4)
-
-    else
-        if _G.SpeedGlitchData.Conn then _G.SpeedGlitchData.Conn:Disconnect() end
-        if _G.SpeedGlitchData.Attachment then _G.SpeedGlitchData.Attachment:Destroy() end
-        if _G.SpeedGlitchData.Vel then _G.SpeedGlitchData.Vel:Destroy() end
-        _G.SpeedGlitchData = {}
-        FlexUI:Notify("Info", "💨 Speed Glitch", "Speed Glitch desativado", 3)
     end
-end)
-
---===[ TAB MISC ]===--
-FlexUI:AddSection(MiscTab, "🔧 Utilitários do Jogo")
-
--- == REJOIN ==
-FlexUI:AddButton(MiscTab, "🔄 Rejoin no Servidor", function()
-    local PlaceId = game.PlaceId
-    FlexUI:Notify("Warning", "🔄 Reconnectando", "Reconectando ao servidor...", 2)
-    task.wait(1)
-    game:GetService("TeleportService"):Teleport(PlaceId, player)
-end)
-
--- == SERVER HOP ==
-FlexUI:AddButton(MiscTab, "🎲 Trocar de Servidor", function()
-    FlexUI:Notify("Info", "🎲 Server Hop", "Procurando outro servidor...", 3)
     
-    task.spawn(function()
-        local PlaceId = game.PlaceId
-        local HttpService = game:GetService("HttpService")
-        local Servers = {}
-        local cursor = ""
-
-        repeat
-            local success, response = pcall(function()
-                return game:HttpGet("https://games.roblox.com/v1/games/"..PlaceId.."/servers/Public?sortOrder=Asc&limit=100&cursor="..cursor)
-            end)
-            if success and response then
-                local data = HttpService:JSONDecode(response)
-                for _, server in pairs(data.data) do
-                    if server.playing < server.maxPlayers and server.id ~= game.JobId then
-                        table.insert(Servers, server.id)
-                    end
-                end
-                cursor = data.nextPageCursor or ""
-            else
-                break
+    if state then
+        SetupSpeedGlitch()
+        
+        -- Reconectar quando o character respawnar
+        player.CharacterAdded:Connect(function()
+            if Config.SpeedGlitch.Enabled then
+                task.wait(1)
+                SetupSpeedGlitch()
+                SendEnhancedNotification("Speed Glitch", "Sistema reaplicado após respawn!", 3, "info")
             end
-        until cursor == nil or cursor == ""
-
-        if #Servers > 0 then
-            local chosen = Servers[math.random(1,#Servers)]
-            FlexUI:Notify("Success", "🎲 Teleportando", "Conectando ao novo servidor...", 2)
-            game:GetService("TeleportService"):TeleportToPlaceInstance(PlaceId, chosen, player)
-        else
-            FlexUI:Notify("Error", "❌ Server Hop", "Nenhum servidor disponível encontrado!", 3)
+        end)
+        
+        SendEnhancedNotification("Speed Glitch Ativado", 
+            "Use WASD para impulso premium!\nForça: " .. Config.SpeedGlitch.Force, 4, "success")
+    else
+        if speedGlitchData.Connection then
+            speedGlitchData.Connection:Disconnect()
+            speedGlitchData.Connection = nil
         end
-    end)
+        if speedGlitchData.Attachment then
+            speedGlitchData.Attachment:Destroy()
+            speedGlitchData.Attachment = nil
+        end
+        if speedGlitchData.Velocity then
+            speedGlitchData.Velocity:Destroy()
+            speedGlitchData.Velocity = nil
+        end
+        
+        SendEnhancedNotification("Speed Glitch Desativado", 
+            "Movimento normal restaurado", 3, "info")
+    end
 end)
 
--- == BRAINROT ESP ==
-FlexUI:AddSection(MiscTab, "👁️ Sistema ESP")
+-- Configuração do Speed Glitch usando o slider CORRETO
+FlexUI:AddSlider(PlayerTab, "⚡ Força do Speed Glitch", 10, 25, 16.2, function(value)
+    Config.SpeedGlitch.Force = value
+    SendEnhancedNotification("Configuração Atualizada", 
+        "Força do Speed Glitch: " .. value, 3, "info")
+end)
 
-local brainrotESPActive = false
-local ESPFolders = {}
+--===[ TAB BRAINROT ESPECIALIZADO ]===--
+FlexUI:AddSection(BrainrotTab, "🧠 Sistema de Brainrot Avançado")
 
-FlexUI:AddToggle(MiscTab, "👁️ Brainrot ESP", false, function(state)
-    brainrotESPActive = state
-
-    -- Limpa ESP antigo
-    for _, f in pairs(ESPFolders) do
-        if f and f.Parent then
-            f:Destroy()
+-- Scanner de brainrot em tempo real
+FlexUI:AddButton(BrainrotTab, "🔍 Scanner Completo de Brainrots", function()
+    local foundCount = 0
+    local playersScanned = 0
+    
+    SendEnhancedNotification("Scanner Iniciado", 
+        "Procurando brainrots em todos os players...", 3, "info")
+    
+    for _, targetPlayer in ipairs(Players:GetPlayers()) do
+        playersScanned = playersScanned + 1
+        local brainrotInfo = FindPlayerBrainrotInfo(targetPlayer.Name)
+        
+        if brainrotInfo then
+            foundCount = foundCount + 1
+            SendEnhancedNotification("🧠 Brainrot Encontrado", 
+                string.format("Player: %s\n%s (Gen %s)\n%s", 
+                    targetPlayer.Name,
+                    brainrotInfo.DisplayName,
+                    brainrotInfo.Generation,
+                    brainrotInfo.Mutation), 
+                4, "info")
+            task.wait(0.5) -- Delay entre notificações
         end
     end
-    ESPFolders = {}
+    
+    SendEnhancedNotification("Scanner Finalizado", 
+        string.format("Resultados: %d/%d players com brainrot", foundCount, playersScanned), 
+        5, "success")
+end)
 
-    if brainrotESPActive then
-        local foundCount = 0
+-- Ver brainrot próprio
+FlexUI:AddButton(BrainrotTab, "👀 Ver Meu Brainrot", function()
+    local brainrotInfo = GetBrainrotInfoString(player.Name)
+    SendEnhancedNotification("🧠 Seu Brainrot", brainrotInfo, 6, "info")
+end)
+
+-- Sistema de ESP para brainrots
+local espInstances = {}
+FlexUI:AddToggle(BrainrotTab, "👁️ Brainrot ESP Visual", false, function(state)
+    Config.ESP.Enabled = state
+    
+    -- Limpar ESP anterior
+    for _, esp in pairs(espInstances) do
+        if esp and esp.Parent then
+            esp:Destroy()
+        end
+    end
+    espInstances = {}
+    
+    if state then
+        local espCount = 0
         for _, plot in pairs(Workspace.Plots:GetChildren()) do
             if plot:FindFirstChild("AnimalPodiums") then
                 for _, podium in pairs(plot.AnimalPodiums:GetChildren()) do
-                    if podium:FindFirstChild("Base") and podium.Base:FindFirstChild("Spawn") then
-                        local attach = podium.Base.Spawn:FindFirstChild("Attachment")
-                        if attach and attach:FindFirstChild("AnimalOverhead") then
-                            local overhead = attach.AnimalOverhead
-                            local displayLabel = overhead:FindFirstChild("DisplayName")
-                            local mutationLabel = overhead:FindFirstChild("Mutation")
-                            local generationLabel = overhead:FindFirstChild("Generation")
-
-                            if displayLabel and mutationLabel and generationLabel then
-                                local Billboard = Instance.new("BillboardGui")
-                                Billboard.Size = UDim2.new(0, 200, 0, 60)
-                                Billboard.Adornee = podium.Base
-                                Billboard.AlwaysOnTop = true
-                                Billboard.MaxDistance = 100
-                                Billboard.Parent = podium.Base
-
-                                local text = Instance.new("TextLabel")
-                                text.Size = UDim2.new(1, 0, 1, 0)
-                                text.BackgroundTransparency = 0.7
-                                text.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-                                text.TextColor3 = Color3.fromRGB(255, 255, 0)
-                                text.Font = Enum.Font.GothamBold
-                                text.TextSize = 12
-                                text.Text = displayLabel.Text.."\n"..mutationLabel.Text.."\nGen: "..generationLabel.Text
-                                text.TextStrokeTransparency = 0
-                                text.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-                                text.Parent = Billboard
-
-                                table.insert(ESPFolders, Billboard)
-                                foundCount = foundCount + 1
+                    local base = podium:FindFirstChild("Base")
+                    if base then
+                        local spawn = base:FindFirstChild("Spawn")
+                        if spawn then
+                            local attach = spawn:FindFirstChild("Attachment")
+                            if attach then
+                                local overhead = attach:FindFirstChild("AnimalOverhead")
+                                if overhead then
+                                    local displayLabel = overhead:FindFirstChild("DisplayName")
+                                    local generationLabel = overhead:FindFirstChild("Generation")
+                                    
+                                    if displayLabel and generationLabel then
+                                        -- Criar ESP
+                                        local billboard = Instance.new("BillboardGui")
+                                        billboard.Size = UDim2.new(0, 200, 0, 80)
+                                        billboard.Adornee = base
+                                        billboard.AlwaysOnTop = true
+                                        billboard.MaxDistance = Config.ESP.Range
+                                        billboard.Parent = base
+                                        
+                                        local frame = Instance.new("Frame")
+                                        frame.Size = UDim2.new(1, 0, 1, 0)
+                                        frame.BackgroundTransparency = 0.7
+                                        frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+                                        frame.BorderSizePixel = 0
+                                        frame.Parent = billboard
+                                        
+                                        local label = Instance.new("TextLabel")
+                                        label.Size = UDim2.new(1, -10, 1, -10)
+                                        label.Position = UDim2.new(0, 5, 0, 5)
+                                        label.BackgroundTransparency = 1
+                                        label.TextColor3 = Color3.fromRGB(255, 255, 0)
+                                        label.Font = Enum.Font.GothamBold
+                                        label.TextSize = 12
+                                        label.Text = string.format("🧠 %s\n🎯 %s", 
+                                            displayLabel.Text, 
+                                            generationLabel.Text)
+                                        label.TextStrokeTransparency = 0
+                                        label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+                                        label.Parent = frame
+                                        
+                                        table.insert(espInstances, billboard)
+                                        espCount = espCount + 1
+                                    end
+                                end
                             end
                         end
                     end
@@ -388,98 +484,140 @@ FlexUI:AddToggle(MiscTab, "👁️ Brainrot ESP", false, function(state)
             end
         end
         
-        FlexUI:Notify("Success", "👁️ Brainrot ESP", "ESP ativado! "..foundCount.." objetos encontrados", 4)
+        SendEnhancedNotification("ESP Ativado", 
+            string.format("%d brainrots marcados no mapa", espCount), 4, "success")
     else
-        FlexUI:Notify("Info", "👁️ Brainrot ESP", "ESP desativado", 3)
+        SendEnhancedNotification("ESP Desativado", 
+            "Marcadores removidos do mapa", 3, "info")
     end
 end)
 
---===[ FUNÇÃO PARA VER BRAINROT DE PLAYER ESPECÍFICO ]===--
-FlexUI:AddSection(PlayerTab, "🧠 Ver Brainrot de Player")
+--===[ TAB UTILITÁRIOS AVANÇADOS ]===--
+FlexUI:AddSection(MiscTab, "🚀 Utilitários do Servidor")
 
-FlexUI:AddButton(PlayerTab, "🔍 Ver Meu Brainrot", function()
-    local brainrotInfo = GetBrainrotInfoString(player.Name)
-    FlexUI:Notify("Info", "🧠 Meu Brainrot", brainrotInfo, 5)
+-- Sistema de notificações
+FlexUI:AddSection(MiscTab, "🔔 Sistema de Notificações")
+
+FlexUI:AddToggle(MiscTab, "👥 Notificar Entrada/Saída", true, function(state)
+    Config.Notifications.PlayerJoinLeave = state
+    SendEnhancedNotification("Notificações", 
+        state and "Notificações de players ativadas" or "Notificações de players desativadas", 
+        3, state and "success" or "info")
 end)
 
-FlexUI:AddButton(PlayerTab, "🔍 Ver Brainrot de Todos", function()
-    local allPlayers = Players:GetPlayers()
-    local foundCount = 0
+FlexUI:AddToggle(MiscTab, "🧠 Info de Brainrot Automática", true, function(state)
+    Config.Notifications.BrainrotInfo = state
+    SendEnhancedNotification("Info Brainrot", 
+        state and "Informações de brainrot ativadas" or "Informações de brainrot desativadas", 
+        3, state and "success" or "info")
+end)
+
+-- Serviços de servidor
+FlexUI:AddSection(MiscTab, "🌐 Gerenciamento de Servidor")
+
+FlexUI:AddButton(MiscTab, "🔄 Rejoin Rápido", function()
+    SendEnhancedNotification("Reconectando", "Reconectando ao servidor atual...", 2, "warning")
+    task.wait(1)
+    TeleportService:Teleport(game.PlaceId, player)
+end)
+
+FlexUI:AddButton(MiscTab, "🎲 Server Hop Inteligente", function()
+    SendEnhancedNotification("Server Hop", "Procurando servidor ideal...", 3, "info")
     
-    for _, plr in ipairs(allPlayers) do
-        if plr ~= player then
-            local brainrotInfo = FindPlayerBrainrotInfo(plr.Name)
-            if brainrotInfo then
-                foundCount = foundCount + 1
-                FlexUI:Notify("Info", 
-                    "🧠 Brainrot de " .. plr.Name,
-                    string.format("🧠 %s\n🎯 Gen: %s | %s", 
-                        brainrotInfo.DisplayName, 
-                        brainrotInfo.Generation, 
-                        brainrotInfo.Mutation), 
-                    4
-                )
-                task.wait(1) -- Espaço entre notificações
+    task.spawn(function()
+        local placeId = game.PlaceId
+        local servers = {}
+        local cursor = ""
+        
+        repeat
+            local success, result = pcall(function()
+                return game:HttpGet("https://games.roblox.com/v1/games/"..placeId.."/servers/Public?sortOrder=Asc&limit=100&cursor="..cursor)
+            end)
+            
+            if success and result then
+                local data = HttpService:JSONDecode(result)
+                for _, server in ipairs(data.data) do
+                    if server.playing < server.maxPlayers - 2 and server.id ~= game.JobId then
+                        table.insert(servers, server.id)
+                    end
+                end
+                cursor = data.nextPageCursor or ""
+            else
+                break
+            end
+        until cursor == ""
+        
+        if #servers > 0 then
+            local targetServer = servers[math.random(1, #servers)]
+            SendEnhancedNotification("Servidor Encontrado", "Conectando ao novo servidor...", 2, "success")
+            TeleportService:TeleportToPlaceInstance(placeId, targetServer, player)
+        else
+            SendEnhancedNotification("Sem Servidores", "Nenhum servidor adequado encontrado", 3, "error")
+        end
+    end)
+end)
+
+--===[ SISTEMA DE EVENTOS ]===--
+-- Notificações de players entrando/saindo
+Players.PlayerAdded:Connect(function(newPlayer)
+    if Config.Notifications.PlayerJoinLeave then
+        SendEnhancedNotification("👤 Player Entrou", newPlayer.Name .. " entrou no jogo!", 3, "info")
+        
+        if Config.Notifications.BrainrotInfo then
+            task.wait(3) -- Aguardar carregamento
+            local brainrotInfo = GetBrainrotInfoString(newPlayer.Name)
+            if brainrotInfo:find("Nenhum") == nil then
+                SendEnhancedNotification("🧠 Brainrot Detectado", 
+                    newPlayer.Name .. " possui:\n" .. brainrotInfo, 5, "info")
             end
         end
     end
-    
-    if foundCount == 0 then
-        FlexUI:Notify("Warning", "🔍 Brainrot Scan", "Nenhum brainrot encontrado nos outros players", 3)
+end)
+
+Players.PlayerRemoving:Connect(function(leftPlayer)
+    if Config.Notifications.PlayerJoinLeave then
+        SendEnhancedNotification("👤 Player Saiu", leftPlayer.Name .. " saiu do jogo!", 3, "warning")
     end
 end)
 
---===[ SISTEMA DE SELEÇÃO DE PLAYER SIMPLIFICADO ]===--
-FlexUI:AddSection(PlayerTab, "👥 Seleção Rápida de Player")
-
--- Botões para seleção rápida de players online
-local function UpdatePlayerSelection()
-    -- Em uma implementação real, você limparia os botões antigos primeiro
-    local currentPlayers = GetPlayers()
-    
-    for i, playerName in ipairs(currentPlayers) do
-        if playerName ~= "Nenhum jogador" then
-            FlexUI:AddButton(PlayerTab, "🎯 Selecionar: " .. playerName, function()
-                selectedPlayer = playerName
-                
-                -- Mostra também o brainrot do player selecionado
-                local brainrotInfo = GetBrainrotInfoString(playerName)
-                
-                FlexUI:Notify("Success", 
-                    "🎯 Alvo Definido", 
-                    "Jogador alvo: " .. playerName .. 
-                    "\n\n" .. brainrotInfo, 
-                    4
-                )
-            end)
-        end
-    end
-end
-
-FlexUI:AddButton(PlayerTab, "🔄 Atualizar Seleção de Players", UpdatePlayerSelection)
-
---===[ INICIALIZAÇÃO ]===--
+--===[ INICIALIZAÇÃO PREMIUM ]===--
 FlexUI:Show()
 
--- Notificação de boas-vindas
+-- Sequência de inicialização premium
 task.spawn(function()
     task.wait(1)
-    FlexUI:Notify("Success", "🦊 Fox Panel", "v1.6.0 carregado com sucesso!\nBem-vindo, " .. player.Name .. "!", 5)
+    SendEnhancedNotification("🦊 Fox Panel Premium", 
+        "v2.0.0 carregado com sucesso!\nBem-vindo, " .. player.DisplayName .. "! 🎉", 
+        5, "success")
     
-    -- Mostra também o brainrot do próprio player
     task.wait(2)
+    
+    -- Mostrar brainrot do próprio player
     local myBrainrot = GetBrainrotInfoString(player.Name)
-    FlexUI:Notify("Info", "🧠 Seu Brainrot", myBrainrot, 5)
+    if myBrainrot:find("Nenhum") == nil then
+        SendEnhancedNotification("🧠 Seu Brainrot Premium", myBrainrot, 6, "info")
+    end
+    
+    -- Status inicial do sistema
+    task.wait(1)
+    local status = UpdateSystemStatus()
+    SendEnhancedNotification("📊 Status do Sistema", status, 4, "info")
 end)
 
-print("🦊 Fox Panel v1.6.0 - FlexUI Integration Carregada!")
+-- Atualizar lista de players inicial
+UpdatePlayersList()
+
+print("🎯 Fox Panel Premium v2.0.0 - Sistema Carregado!")
 print("• Auto Kick System ✅")
-print("• Speed Glitch ✅") 
-print("• Brainrot ESP ✅")
-print("• Server Utilities ✅")
-print("• Brainrot Notifications ✅")
+print("• Speed Glitch Premium ✅") 
+print("• Brainrot Scanner Avançado ✅")
+print("• ESP Visual ✅")
+print("• Notificações Inteligentes ✅")
+print("• Interface Moderna ✅")
 
--- Inicializar lista de players
-UpdatePlayerSelection()
-
-return FlexUI
+return {
+    Config = Config,
+    BrainrotCache = BrainrotCache,
+    UpdatePlayersList = UpdatePlayersList,
+    GetBrainrotInfoString = GetBrainrotInfoString
+}
