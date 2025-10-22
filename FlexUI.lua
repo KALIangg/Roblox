@@ -1,5 +1,5 @@
 -- 🌌 Lua God | Flex UI Framework - Kubca @ FiveSense 🌌
--- 🚀 Versão Melhorada: UI totalmente responsiva, animada e funcional
+-- 🚀 Versão Corrigida: Slider funcionando corretamente
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -594,6 +594,7 @@ function FlexUI:AddToggle(tab, text, default, callback)
     return ToggleFrame
 end
 
+--===[ SISTEMA DE SLIDER CORRIGIDO ]===--
 function FlexUI:AddSlider(tab, text, min, max, default, callback)
     local SliderFrame = Instance.new("Frame")
     SliderFrame.Size = UDim2.new(1, -20, 0, 50)
@@ -612,13 +613,22 @@ function FlexUI:AddSlider(tab, text, min, max, default, callback)
     SliderLabel.ZIndex = 10
     SliderLabel.Parent = SliderFrame
     
+    -- Container do slider track com TextButton para capturar cliques
+    local SliderContainer = Instance.new("TextButton")
+    SliderContainer.Size = UDim2.new(1, 0, 0, 6)
+    SliderContainer.Position = UDim2.new(0, 0, 0, 30)
+    SliderContainer.BackgroundTransparency = 1
+    SliderContainer.Text = ""
+    SliderContainer.AutoButtonColor = false
+    SliderContainer.ZIndex = 10
+    SliderContainer.Parent = SliderFrame
+    
     local SliderTrack = Instance.new("Frame")
-    SliderTrack.Size = UDim2.new(1, 0, 0, 6)
-    SliderTrack.Position = UDim2.new(0, 0, 0, 30)
+    SliderTrack.Size = UDim2.new(1, 0, 1, 0)
     SliderTrack.BackgroundColor3 = THEME.Card
     SliderTrack.BorderSizePixel = 0
     SliderTrack.ZIndex = 10
-    SliderTrack.Parent = SliderFrame
+    SliderTrack.Parent = SliderContainer
     
     ApplyCornerRadius(SliderTrack, 3)
     
@@ -638,7 +648,7 @@ function FlexUI:AddSlider(tab, text, min, max, default, callback)
     SliderButton.Text = ""
     SliderButton.AutoButtonColor = false
     SliderButton.ZIndex = 12
-    SliderButton.Parent = SliderTrack
+    SliderButton.Parent = SliderContainer
     
     ApplyCornerRadius(SliderButton, 8)
     
@@ -655,6 +665,7 @@ function FlexUI:AddSlider(tab, text, min, max, default, callback)
         callback(value)
     end
     
+    -- Sistema de arrastar CORRETO usando TextButton
     SliderButton.MouseButton1Down:Connect(function()
         dragging = true
     end)
@@ -665,7 +676,8 @@ function FlexUI:AddSlider(tab, text, min, max, default, callback)
         end
     end)
     
-    SliderTrack.MouseButton1Down:Connect(function(x, y)
+    -- Clique no track para definir valor - AGORA FUNCIONA porque SliderContainer é TextButton
+    SliderContainer.MouseButton1Down:Connect(function(x, y)
         local relativeX = x - SliderTrack.AbsolutePosition.X
         local ratio = math.clamp(relativeX / SliderTrack.AbsoluteSize.X, 0, 1)
         UpdateSlider(min + ratio * (max - min))
