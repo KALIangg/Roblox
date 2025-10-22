@@ -167,6 +167,125 @@ function library:AddTab(name)
             end)
         end
 
+        function SectionObj:AddSlider(info)
+            local Frame = Instance.new("Frame", Section)
+            Frame.Size = UDim2.new(1, -10, 0, 40)
+            Frame.Position = UDim2.new(0, 5, 0, 95)
+            Frame.BackgroundTransparency = 1
+
+            local Label = Instance.new("TextLabel", Frame)
+            Label.Text = info.text or "Slider"
+            Label.Font = Enum.Font.Gotham
+            Label.TextSize = 14
+            Label.TextColor3 = Color3.new(1, 1, 1)
+            Label.BackgroundTransparency = 1
+            Label.Position = UDim2.new(0, 0, 0, 0)
+
+            local SliderBack = Instance.new("Frame", Frame)
+            SliderBack.Size = UDim2.new(1, 0, 0, 6)
+            SliderBack.Position = UDim2.new(0, 0, 1, -10)
+            SliderBack.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+
+            local SliderFill = Instance.new("Frame", SliderBack)
+            SliderFill.BackgroundColor3 = library.ThemeColor
+            SliderFill.Size = UDim2.new(0, 0, 1, 0)
+
+            local dragging = false
+            SliderBack.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true end
+            end)
+            UserInputService.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+            end)
+            RunService.RenderStepped:Connect(function()
+                if dragging then
+                    local pos = math.clamp((UserInputService:GetMouseLocation().X - SliderBack.AbsolutePosition.X) / SliderBack.AbsoluteSize.X, 0, 1)
+                    SliderFill.Size = UDim2.new(pos, 0, 1, 0)
+                    local value = math.floor(((info.max - info.min) * pos + info.min) * 100) / 100
+                    if info.callback then info.callback(value) end
+                end
+            end)
+        end
+
+        function SectionObj:AddBox(info)
+            local Box = Instance.new("TextBox", Section)
+            Box.Size = UDim2.new(1, -10, 0, 30)
+            Box.Position = UDim2.new(0, 5, 0, 140)
+            Box.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+            Box.PlaceholderText = info.input or "Type here"
+            Box.Text = ""
+            Box.TextColor3 = Color3.new(1, 1, 1)
+            Box.Font = Enum.Font.Gotham
+            Box.TextSize = 14
+            Instance.new("UICorner", Box).CornerRadius = UDim.new(0, 6)
+
+            Box.FocusLost:Connect(function()
+                if info.callback then info.callback(Box.Text) end
+            end)
+        end
+
+        function SectionObj:AddDropdown(info)
+            local Drop = Instance.new("TextButton", Section)
+            Drop.Size = UDim2.new(1, -10, 0, 30)
+            Drop.Position = UDim2.new(0, 5, 0, 180)
+            Drop.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+            Drop.Text = info.text or "Dropdown"
+            Drop.TextColor3 = Color3.new(1, 1, 1)
+            Drop.Font = Enum.Font.Gotham
+            Drop.TextSize = 14
+            Instance.new("UICorner", Drop).CornerRadius = UDim.new(0, 6)
+
+            local Opened = false
+            local ListFrame = Instance.new("Frame", Section)
+            ListFrame.Position = UDim2.new(0, 5, 0, 215)
+            ListFrame.Size = UDim2.new(1, -10, 0, 0)
+            ListFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+            Instance.new("UICorner", ListFrame).CornerRadius = UDim.new(0, 6)
+
+            Drop.MouseButton1Click:Connect(function()
+                Opened = not Opened
+                Tween(ListFrame, {Size = Opened and UDim2.new(1, -10, 0, (#info.values * 25)) or UDim2.new(1, -10, 0, 0)}, 0.25)
+                if Opened then
+                    for _, v in ipairs(info.values) do
+                        local Item = Instance.new("TextButton", ListFrame)
+                        Item.Text = v
+                        Item.Size = UDim2.new(1, 0, 0, 25)
+                        Item.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+                        Item.TextColor3 = Color3.new(1, 1, 1)
+                        Item.Font = Enum.Font.Gotham
+                        Item.TextSize = 14
+                        Item.MouseButton1Click:Connect(function()
+                            Drop.Text = v
+                            if info.callback then info.callback(v) end
+                            Tween(ListFrame, {Size = UDim2.new(1, -10, 0, 0)}, 0.25)
+                            Opened = false
+                            for _, child in ipairs(ListFrame:GetChildren()) do if child:IsA("TextButton") then child:Destroy() end end
+                        end)
+                    end
+                else
+                    for _, child in ipairs(ListFrame:GetChildren()) do if child:IsA("TextButton") then child:Destroy() end end
+                end
+            end)
+        end
+
+        function SectionObj:AddColor(info)
+            local ColorButton = Instance.new("TextButton", Section)
+            ColorButton.Size = UDim2.new(1, -10, 0, 30)
+            ColorButton.Position = UDim2.new(0, 5, 0, 255)
+            ColorButton.BackgroundColor3 = info.color or library.ThemeColor
+            ColorButton.Text = info.text or "ColorPicker"
+            ColorButton.TextColor3 = Color3.new(1, 1, 1)
+            ColorButton.Font = Enum.Font.Gotham
+            ColorButton.TextSize = 14
+            Instance.new("UICorner", ColorButton).CornerRadius = UDim.new(0, 6)
+
+            ColorButton.MouseButton1Click:Connect(function()
+                local random = Color3.fromHSV(math.random(), 1, 1)
+                Tween(ColorButton, {BackgroundColor3 = random}, 0.2)
+                if info.callback then info.callback(random) end
+            end)
+        end
+
         return SectionObj
     end
 
