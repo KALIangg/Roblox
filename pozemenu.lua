@@ -4,6 +4,11 @@ local localPlayer = game.Players.LocalPlayer
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
+local character = player.Character
+local char = player.Character
+local root = char and char:FindFirstChild("HumanoidRootPart")
+local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+local Humanoid = char and char:FindFirstChildOfClass("Humanoid")
 
 local flingActive = false
 local oldPos = nil
@@ -80,10 +85,6 @@ end
 -- Stop do fling
 local function StopSkidFling()
     flingActive = false
-
-    local char = player.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    local humanoid = char and char:FindFirstChildOfClass("Humanoid")
 
     -- Remove BodyVelocity
     if root then
@@ -235,8 +236,8 @@ end
 
 
 
-local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Consistt/Ui/main/UnLeaked"))()
-
+-- local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Consistt/Ui/main/UnLeaked"))()
+local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/KALIangg/Roblox-UI-Libs/refs/heads/main/xsx%20Lib/xsx%20Lib%20Source.lua"))()
 
 library.rank = "Premium"
 local Wm = library:Watermark("Poze MENU | v" .. library.version ..  " | " .. library:GetUsername() .. " | rank: " .. library.rank)
@@ -1198,7 +1199,7 @@ print("Sistema de admin carregado.")
 
 Players.PlayerAdded:Connect(function(player)
 	if MonitorExploits then
-		library:SendNotification("🟢 " .. player.Name .. " entrou no jogo.", 3, Color3.new(255, 0, 0))
+		Notif:Notify("🟢 " .. player.Name .. " entrou no jogo.", 3, sucess)
 	end
 
 	player.CharacterAdded:Connect(function(char)
@@ -1206,7 +1207,7 @@ Players.PlayerAdded:Connect(function(player)
 		if hum then
 			hum:GetPropertyChangedSignal("Health"):Connect(function()
 				if MonitorExploits and hum.Health <= 0 then
-					library:SendNotification("☠️ " .. player.Name .. " morreu.", 3, Color3.new(255, 0, 0))
+					Notif:Notify("☠️ " .. player.Name .. " morreu.", 3, "sucess")
 				end
 			end)
 		end
@@ -1215,7 +1216,7 @@ end)
 
 Players.PlayerRemoving:Connect(function(player)
 	if MonitorExploits then
-		library:SendNotification("🔴 " .. player.Name .. " saiu do jogo.", 3, Color3.new(255, 0, 0))
+		Notif:Notify("🔴 " .. player.Name .. " saiu do jogo.", 3, "sucess")
 	end
 end)
 
@@ -1225,7 +1226,7 @@ TextChatService.MessageReceived:Connect(function(msg)
 	if not MonitorExploits then return end
 	local speaker = msg.TextSource and Players:GetPlayerByUserId(msg.TextSource.UserId)
 	if speaker then
-		library:SendNotification("💬 " .. speaker.Name .. ": " .. msg.Text, 3, Color3.new(255, 0, 0))
+		Notif:Notify("💬 " .. speaker.Name .. ": " .. msg.Text, 3, "sucess")
 	end
 end)
 
@@ -1246,7 +1247,6 @@ RunService.Heartbeat:Connect(function()
 				local distance = (currentPos - lastPos).Magnitude
 				local cooldownPassed = (not lastTPNotify[player]) or (now - lastTPNotify[player] >= TELEPORT_COOLDOWN)
 
-				local humanoid = char:FindFirstChildOfClass("Humanoid")
 				local speed = humanoid and humanoid.MoveDirection.Magnitude or 0
 				local velocity = hrp.Velocity.Magnitude
 
@@ -1263,9 +1263,9 @@ RunService.Heartbeat:Connect(function()
 					end
 
 					if near then
-						library:SendNotification("📍 " .. player.Name .. " teleportou-se para perto de " .. near.Name, 3, Color3.new(255, 0, 0))
+						Notif:Notify("📍 " .. player.Name .. " teleportou-se para perto de " .. near.Name, 3, "sucess")
 					else
-						library:SendNotification("📍 " .. player.Name .. " teleportou-se para área remota", 3, Color3.new(255, 0, 0))
+						Notif:Notify("📍 " .. player.Name .. " teleportou-se para área remota", 3, "sucess")
 					end
 					lastTPNotify[player] = now
 				end
@@ -1288,7 +1288,7 @@ RunService.RenderStepped:Connect(function()
 	if typeof(camSub) == "Instance" and camSub:IsA("Humanoid") then
 		local targetPlr = Players:GetPlayerFromCharacter(camSub.Parent)
 		if targetPlr and targetPlr ~= Players.LocalPlayer then
-			library:SendNotification("🎥 " .. Players.LocalPlayer.Name .. " está observando " .. targetPlr.Name, 3, Color3.new(255, 0, 0))
+			Notif:Notify("🎥 " .. Players.LocalPlayer.Name .. " está observando " .. targetPlr.Name, 3, "sucess")
 		end
 	end
 
@@ -1296,7 +1296,7 @@ RunService.RenderStepped:Connect(function()
 	if now - lastFreecamCheck >= FREECAM_COOLDOWN then
 		if isPlayerInFreecam(Players.LocalPlayer) then
 			if not lastFreecamState[Players.LocalPlayer] then
-				library:SendNotification("🛸 " .. Players.LocalPlayer.Name .. " entrou no modo Freecam!", 3, "alert")
+				Notif:Notify("🛸 " .. Players.LocalPlayer.Name .. " entrou no modo Freecam!", 3, "error")
 				lastFreecamState[Players.LocalPlayer] = true
 			end
 		else
@@ -1512,7 +1512,6 @@ local function createESP(player)
 		end
 
 		local char = player.Character
-		local humanoid = char:FindFirstChildOfClass("Humanoid")
 		local root = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso")
 		if not root then
 			box.Visible = false
@@ -1985,21 +1984,25 @@ local function getPlayerNames()
 	return names
 end
 
--- 🔽 Cria o seletor (dropdown) de jogadores
-currentDropdown = Tab2:NewSelector("Selecionar Player", "Escolha o jogador alvo", getPlayerNames(), function(val)
-	selectedPlayer = Players:FindFirstChild(val)
-	SelectedPlayer = val
-end)
+local function createDropdown()
+    if currentDropdown then
+        currentDropdown:Remove()
+    end
 
--- ♻️ Atualiza a lista ao entrar/sair jogadores
-local function updateDropdown()
-	if not currentDropdown then return end
-	currentDropdown.values = getPlayerNames()
-	currentDropdown:Refresh()
+    -- 🔽 Cria o seletor (dropdown) de jogadores
+    currentDropdown = Tab2:NewSelector("Selecionar Player", "Escolha o jogador alvo", getPlayerNames(), function(val)
+        selectedPlayer = Players:FindFirstChild(val)
+        SelectedPlayer = val
+    end)
 end
 
-Players.PlayerAdded:Connect(updateDropdown)
-Players.PlayerRemoving:Connect(updateDropdown)
+
+createDropdown()
+
+
+-- Atualizar dropdown em tempo real
+Players.PlayerAdded:Connect(createDropdown)
+Players.PlayerRemoving:Connect(createDropdown)
 
 ----------------------------------------------------------
 -- 👀 LOCALIZAR JOGADOR
@@ -2100,7 +2103,6 @@ local function startBang(mode, targetName)
 
 	local char = LocalPlayer.Character
 	if not char then return end
-	local humanoid = char:FindFirstChildWhichIsA("Humanoid")
 	local rootPart = getRoot(char)
 	if not humanoid or not rootPart then return end
 
@@ -2148,7 +2150,6 @@ local function stopBang()
 	if bangDied then bangDied:Disconnect() bangDied = nil end
 	if bangLoop then bangLoop:Disconnect() bangLoop = nil end
 
-	local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildWhichIsA("Humanoid")
 	if humanoid then
 		humanoid.AutoRotate = true
 		humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
@@ -2313,8 +2314,7 @@ local currentVelocity = Vector3.zero
 
 -- IDs das animações (substitua pelos seus)
 local runAnimId = "rbxassetid://86655743171657"
-local idleAnimId = "rbxassetid://121655148084031"
-local humanoid = nil
+local idleAnimId = "rbxassetid://107817714498111"
 local runAnimation, idleAnimation = nil, nil
 local runTrack, idleTrack = nil, nil
 local AnimationPriority = Enum.AnimationPriority
@@ -2372,8 +2372,8 @@ local function setupAnimations()
     idleAnimation.AnimationId = idleAnimId
     runTrack = humanoid:LoadAnimation(runAnimation)
     idleTrack = humanoid:LoadAnimation(idleAnimation)
-    runTrack.Priority = AnimationPriority.Action
-    idleTrack.Priority = AnimationPriority.Action
+    runTrack.Priority = AnimationPriority.Action4
+    idleTrack.Priority = AnimationPriority.Action4
 end
 
 local function updateAnimation()
@@ -2636,11 +2636,9 @@ end)
 
 
 
-local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Camera = workspace.CurrentCamera
 
-local Humanoid
 local cameraPos = Vector3.new()
 local cameraRot = Vector2.new()
 local cameraFov = 85
@@ -2831,11 +2829,6 @@ function StopFreecam()
 end
 
 
-
-local RunService = game:GetService("RunService")
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoid = character:WaitForChild("Humanoid")
-
 -- Lista de animações de RP
 local RPAnimations = {
     ["/deitar"] = 104049807204779,
@@ -2946,7 +2939,6 @@ end
 
 
 -- ===== Invisibilidade estilo Infinite Yield com Toggle =====
-local Player = Players.LocalPlayer
 local IsInvis = false
 local InvisibleCharacter, Character
 local invisRunning = false
@@ -3064,6 +3056,61 @@ local function TurnInvisible()
 end
 
 
+-----------------------------------------------------
+-- 🌀 RESET PLAYER
+-----------------------------------------------------
+Tab3:NewButton("Reset Player", function()
+    if LocalPlayer.Character then
+        LocalPlayer.Character:BreakJoints()
+    end
+end)
+
+
+-----------------------------------------------------
+-- 💃 EMOTE PLAYER
+-----------------------------------------------------
+
+
+local emoteid = nil
+local EmoteId = Tab3:NewTextbox("Insira o id...", "", "1", "all", "small", true, false, function(val)
+    emoteid = val
+end)
+
+
+local danceTrack
+Tab3:NewButton("Emote Player", function()
+    if danceTrack then
+        danceTrack:Stop()
+        danceTrack:Destroy()
+        danceTrack = nil
+        return
+    end
+
+    local animation = Instance.new("Animation")
+    animation.AnimationId = "rbxassetid://" .. emoteid -- Substitua pelo ID desejado
+    danceTrack = Humanoid:LoadAnimation(animation)
+    danceTrack.Priority = Enum.AnimationPriority.Action4
+    danceTrack.Looped = true
+    danceTrack:Play()
+
+    -- Para automaticamente ao se mover
+    local HRP = character:WaitForChild("HumanoidRootPart")
+    local lastPos = HRP.Position
+    task.spawn(function()
+        while danceTrack and danceTrack.IsPlaying do
+            task.wait(0.1)
+            if (HRP.Position - lastPos).Magnitude > 0.05 then
+                danceTrack:Stop()
+                danceTrack:Destroy()
+                danceTrack = nil
+                break
+            end
+            lastPos = HRP.Position
+        end
+    end)
+end)
+
+
 ----------------------------------------------------------
 -- 🎥 FREECAM TOGGLE
 ----------------------------------------------------------
@@ -3113,7 +3160,7 @@ end)
 ----------------------------------------------------------
 -- 👻 INVISIBILIDADE (Infinite Yield Style)
 ----------------------------------------------------------
-Tab3:NewToggle("Invisible (IY)", false, function(state)
+Tab3:NewToggle("Invisible", false, function(state)
     if state then
         TurnInvisible()
     else
@@ -3124,7 +3171,7 @@ Tab3:NewToggle("Invisible (IY)", false, function(state)
 end)
 
 -- 💥 Invisibilidade por bug (carro/moto)
-Tab3:NewButton("Ficar Invisível (BUG)", function()
+Tab3:NewButton("SeatBreak", function()
     game.ReplicatedStorage.DeleteCar:FireServer()
 end)
 
@@ -3219,7 +3266,7 @@ Tab4:NewLabel("──────── POZE MENU ────────")
 
 -- 🧠 Botão: executar Dex Explorer
 Tab5:NewButton("Executar Dex", function()
-	library:SendNotification("Carregando Dex Explorer...", 5, Color3.new(255, 0, 0))
+	Notif:Notify("Carregando Dex Explorer...", 5, "sucess")
 	loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))()
 end)
 
@@ -3275,6 +3322,55 @@ Tab5:NewButton("Fire Event Selecionado", function()
 		warn("Nenhum evento selecionado!")
 	end
 end)
+
+
+-----------------------------------------
+-- MOBILE SYSTEM INTEGRATION 📱
+-----------------------------------------
+
+local MobileOpen
+
+local function createMobileIcon()
+    if MobileOpen then
+        MobileOpen:Destroy()
+    end
+
+
+    local gui2 = Instance.new("ScreenGui")
+    gui2.Name = "OpenMobile"
+    gui2.ResetOnSpawn = false
+    gui2.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    gui2.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+    local open = Instance.new("ImageButton")
+    open.Name = "MobileOpen"
+    open.Size = UDim2.new(0, 50, 0, 50)
+    open.Position = UDim2.new(0, 10, 0, 5)
+    open.BackgroundTransparency = 0
+    open.Image = "rbxassetid://76977741215928"
+    open.ImageTransparency = 0
+    open.AutoButtonColor = true
+    open.Parent = gui2
+
+    local openCorner = Instance.new("UICorner")
+    openCorner.CornerRadius = UDim.new(0.9)
+    openCorner.Parent = open
+
+
+    open.MouseButton1Down:Connect(function()
+        local VirtualInputManager = game:GetService("VirtualInputManager")
+
+        -- Simula o pressionar e soltar da tecla "G"
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.RightAlt, false, game)
+        task.wait(0.1)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.RightAlt, false, game)
+    end)
+
+    MobileOpen = gui2
+end
+
+
+createMobileIcon()
 
 ----------------------------------------------------------
 -- ✅ NOTIFICAÇÃO FINAL
