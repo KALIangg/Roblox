@@ -1,3 +1,5 @@
+local LocalPlayer = game.Players.LocalPlayer
+local localPlayer = game.Players.LocalPlayer
 -- Credits To The Original Devs @xz, @goof
 getgenv().Config = {
 	Invite = "informant.wtf",
@@ -10,6 +12,7 @@ getgenv().luaguardvars = {
 
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
+local player = Players.LocalPlayer
 
 local flingActive = false
 local oldPos = nil
@@ -239,8 +242,7 @@ end
 
 
 
-local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/drillygzzly/Other/main/1"))()
--- local library = loadstring(game:HttpGet("https://pastefy.app/lvQzrmkq/raw"))()
+local library = loadstring(game:HttpGet("https://rawcdn.githack.com/KALIangg/Roblox/refs/heads/main/informant.lua"))()
 library:init() -- Initalizes Library Do Not Delete This
 local TextChatService = game:GetService("TextChatService")
 local cam = workspace.CurrentCamera
@@ -350,7 +352,6 @@ sections.Section3:AddToggle({
 
 -- ===== Admin Core =====
 local AdminEnabled = false
-local LocalPlayer = Players.LocalPlayer
 local TextChatService = game:GetService("TextChatService")
 local StarterGui = game:GetService("StarterGui")
 local TeleportService = game:GetService("TeleportService")
@@ -363,7 +364,6 @@ local CommandMeta = {}
 
 local HideChatCommands = false
 local rpModeEnabled = false -- variável de exemplo para RP mode
-local player = LocalPlayer -- variável de exemplo para player RP
 local RPAnimations = {} -- tabela exemplo para animações RP
 
 -- Função que será chamada para executar animações RP (exemplo)
@@ -1003,12 +1003,66 @@ RegisterCommand("sit", function()
     end
 end, {desc="Faz seu personagem sentar"})
 
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+-- Variáveis de controle
+local lastPosition = nil
+local blockOnce = false
+local monitoring = false
+
+-- Função principal de reset
 RegisterCommand("reset", function()
-    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-    if hum then
-        hum.Health = 0
-    end
-end, {desc="Reseta seu personagem"})
+	local char = LocalPlayer.Character
+	if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+
+	-- Salva a posição antes de morrer
+	lastPosition = char.HumanoidRootPart.CFrame
+
+	-- Mata o personagem
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if hum then
+		hum.Health = 0
+	end
+
+	-- Quando o novo personagem nascer...
+	LocalPlayer.CharacterAdded:Once(function(newChar)
+		blockOnce = true -- sinaliza para bloquear o primeiro teleporte
+		monitoring = true
+
+		task.spawn(function()
+			task.wait(2) -- tempo para o respawn natural acontecer
+			repeat task.wait() until newChar:FindFirstChild("HumanoidRootPart")
+
+			-- Reposiciona para onde estava antes
+			newChar.HumanoidRootPart.CFrame = lastPosition
+			print("[✔] Reset concluído e posição restaurada.")
+		end)
+	end)
+end, {desc = "Reset rápido mantendo posição e bloqueando o primeiro teleporte automático"})
+
+-- Monitoramento contínuo (mecânica pura)
+RunService.Heartbeat:Connect(function()
+	if not monitoring or not blockOnce then return end
+
+	local char = LocalPlayer.Character
+	if not char then return end
+
+	local root = char:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+
+	-- Se o jogo tentar teleportar o jogador pra outro lugar logo após o respawn:
+	if (root.Position - lastPosition.Position).Magnitude > 25 then
+		print("[⛔] Teleporte automático detectado e revertido.")
+		root.CFrame = lastPosition
+		blockOnce = false
+		monitoring = false
+	end
+end)
+
+
+
 
 RegisterAlias("re","reset")
 
@@ -1337,7 +1391,6 @@ print("Sistema de monitoramento carregado.")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local camera = workspace.CurrentCamera
-local localPlayer = Players.LocalPlayer
 
 local weaponNames = {
 	"AK-12", "G17", "Glock 22", "AK-47", "M45A1", "MP5",
@@ -1827,8 +1880,6 @@ print("Sistema de visuals carregado. ESPWall disponível!")
 -- Variáveis obrigatórias
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
 local AimFovEnabled = false
@@ -2096,10 +2147,8 @@ sections.Section1:AddList({
 
 ----------------- PLAYERS -----------------
 
-local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
-local player = Players.LocalPlayer
 
 local selectedPlayer = nil
 local SelectedPlayer = nil
@@ -2115,12 +2164,9 @@ locateESP.Center = true
 locateESP.Visible = false
 locateESP.Font = 3
 
-local Players = game:GetService("Players")
 local SelectedPlayer = nil
 local selectedPlayer = nil
 local donodagrana = nil
-
-local Players = game:GetService("Players")
 
 local SelectedPlayer = nil
 local selectedPlayer = nil
@@ -2268,7 +2314,6 @@ sections.Section2:AddButton({
 
 --------------- PLAYERS - Troll ------------
 
-local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
@@ -2313,7 +2358,7 @@ local function startBang(mode, targetName)
 	bang = humanoid:LoadAnimation(bangAnim)
     bang.Looped = true -- 🔁 animação em loop
 	bang:Play(0.1, 1, 1)
-	bang:AdjustSpeed(5)
+	bang:AdjustSpeed(1)
 
 	-- ⛔ Para bang quando morrer
 	bangDied = humanoid.Died:Connect(function()
@@ -2488,9 +2533,6 @@ sections.Section5:AddToggle({
 
 
 local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
-
 local noclipConnection
 local tpLoopConnection
 
@@ -2581,8 +2623,6 @@ end
 
 
 local TweenService = game:GetService("TweenService")
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -2852,8 +2892,45 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
+-- Variável que controla se o sistema de char está ativo
+local charEnabled = false
+
+-- Função chamada quando o toggle muda de estado
+local function setCharState(state)
+	charEnabled = state
+end
+
+-- Toggle na UI (baseado no seu modelo)
+sections.Section3:AddToggle({
+    enabled = true,
+    text = "Char Keybind",
+    flag = "CharToggle",
+    tooltip = "Ativa ou desativa o uso da tecla para enviar o /char",
+    risky = false,
+    callback = function(state)
+        setCharState(state)
+    end
+})
+
+-- Detecção da tecla (novo sistema de chat incluso)
+local UserInputService = game:GetService("UserInputService")
+local TextChatService = game:GetService("TextChatService")
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	if not charEnabled then return end -- ✅ só funciona se o toggle estiver ativo
+
+	if input.KeyCode == Enum.KeyCode.RightBracket then
+		local channel = TextChatService:FindFirstChild("TextChannels")
+		if channel and channel:FindFirstChild("RBXGeneral") then
+			channel.RBXGeneral:SendAsync("/char Hhgefthgwe")
+		end
+	end
+end)
+
+
+
+
 local RunService = game:GetService("RunService")
 
 local mouse = LocalPlayer:GetMouse()
@@ -2945,7 +3022,6 @@ sections.Section3:AddToggle({
 
 
 
-local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Camera = workspace.CurrentCamera
@@ -3487,22 +3563,7 @@ sections.Section3:AddButton({
     risky = false,
     confirm = false,
     callback = function()
-        local char = player.Character
-        if not char then return end
-
-        local humanoid = char:FindFirstChild("Humanoid")
-        if humanoid and humanoid.SeatPart then
-            local seatPart = humanoid.SeatPart
-            if seatPart:IsA("Seat") or seatPart:IsA("VehicleSeat") then
-                local parent = seatPart.Parent
-                if parent and parent:IsDescendantOf(workspace) then
-                    parent:Destroy()
-                    library:SendNotification("Invisível aplicado com sucesso.", 5, Color3.new(0, 1, 0))
-                end
-            end
-        else
-            library:SendNotification("Você precisa estar sentado em um veículo para usar isso.", 5, Color3.new(1, 0, 0))
-        end
+        game.ReplicatedStorage.DeleteCar:FireServer()
     end
 })
 
@@ -3655,6 +3716,146 @@ sections.Section6:AddButton({
         loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))()
     end
 })
+
+-- // Serviços
+local ContextActionService = game:GetService("ContextActionService")
+local playerGui = player:WaitForChild("PlayerGui")
+
+local selectedEvent = nil
+local inputtext = ""
+local textBoxActive = false
+
+-- // Função para pegar eventos
+local function getAllEvents()
+	local events = {}
+	for _, v in ipairs(game.ReplicatedStorage:GetDescendants()) do
+		if v:IsA("RemoteEvent") then
+			table.insert(events, v.Name)
+		end
+	end
+	return events
+end
+
+-- // Cria GUI externa minimalista
+local function createExternalBox()
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "ExternalInputGui"
+	gui.ResetOnSpawn = false
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+	gui.Enabled = false
+	gui.Parent = playerGui
+
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.new(0, 300, 0, 50)
+	frame.Position = UDim2.new(0.5, -150, 0.85, 0)
+	frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	frame.BackgroundTransparency = 0.15
+	frame.BorderSizePixel = 0
+	frame.Parent = gui
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 10)
+	corner.Parent = frame
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Thickness = 1
+	stroke.Color = Color3.fromRGB(90, 90, 255)
+	stroke.Transparency = 0.3
+	stroke.Parent = frame
+
+	local box = Instance.new("TextBox")
+	box.Size = UDim2.new(1, -20, 1, -10)
+	box.Position = UDim2.new(0, 10, 0, 5)
+	box.BackgroundTransparency = 1
+	box.PlaceholderText = "Digite o argumento do evento..."
+	box.PlaceholderColor3 = Color3.fromRGB(130, 130, 130)
+	box.TextColor3 = Color3.fromRGB(230, 230, 230)
+	box.TextSize = 16
+	box.Font = Enum.Font.Gotham
+	box.TextXAlignment = Enum.TextXAlignment.Left
+	box.ClearTextOnFocus = false
+	box.Parent = frame
+
+	-- Eventos
+	box.FocusLost:Connect(function(enterPressed)
+		inputtext = box.Text
+		if enterPressed then
+			print("Texto salvo:", inputtext)
+		end
+		ContextActionService:UnbindAction("FreezeMovement")
+	end)
+
+	box.Focused:Connect(function()
+		ContextActionService:BindAction(
+			"FreezeMovement",
+			function() return Enum.ContextActionResult.Sink end,
+			false,
+			unpack(Enum.PlayerActions:GetEnumItems())
+		)
+	end)
+
+	return gui, box
+end
+
+-- Cria e guarda referência global
+local ScreenGui, Box = createExternalBox()
+
+-- // Toggle controla TextBox externa
+sections.Section1:AddToggle({
+	enabled = true,
+	text = "Ativar Caixa de Entrada",
+	flag = "Toggle_TextBox",
+	tooltip = "Ativa a TextBox externa para digitar argumentos",
+	risky = false,
+	callback = function(state)
+		textBoxActive = state
+		ScreenGui.Enabled = state
+		if state then
+			Box:CaptureFocus()
+		else
+			Box:ReleaseFocus()
+			ContextActionService:UnbindAction("FreezeMovement")
+		end
+	end
+})
+
+-- // Lista de eventos
+sections.Section6:AddList({
+	enabled = true,
+	text = "Selecionar evento",
+	flag = "EventDropdown",
+	multi = false,
+	value = "",
+	values = getAllEvents(),
+	callback = function(val)
+		for _, v in ipairs(game.ReplicatedStorage:GetDescendants()) do
+			if v.Name == val and v:IsA("RemoteEvent") then
+				selectedEvent = v
+				break
+			end
+		end
+	end
+})
+
+-- // Botão para disparar evento
+sections.Section6:AddButton({
+	enabled = true,
+	text = "Fire Event",
+	flag = "FireButton",
+	tooltip = "Executa o evento remoto selecionado",
+	risky = true,
+	confirm = true,
+	callback = function()
+		if selectedEvent then
+			selectedEvent:FireServer(inputtext)
+			print("Evento disparado:", selectedEvent.Name)
+			print("Argumento:", inputtext)
+		else
+			warn("Nenhum evento selecionado!")
+		end
+	end
+})
+
 
 
 
