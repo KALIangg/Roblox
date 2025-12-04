@@ -1,12 +1,12 @@
-local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/KALIangg/Roblox-UI-Libs/refs/heads/main/xsx%20Lib/xsx%20Lib%20Source.lua"))()
+local library = loadstring(game:HttpGet("https://rawcdn.githack.com/KALIangg/Roblox-UI-Libs/refs/heads/main/xsx%20Lib/xsx%20Lib%20Source.lua"))()
 
-library.rank = "developer"
-local Wm = library:Watermark("🥷Hypex Revamp V3 - Sun Piece | v" .. library.version .. " | " .. library:GetUsername() .. " | rank: " .. library.rank)
-local FpsWm = Wm:AddWatermark("fps: " .. library.fps)
+library.rank = "Pro User"
+local Wm = library:Watermark("V4mpz V3 - Sun Piece | v" .. library.version .. " | " .. library:GetUsername() .. " | User: " .. library.rank)
+local FpsWm = Wm:AddWatermark("FPS: " .. library.fps)
 
 coroutine.wrap(function()
     while wait(.75) do
-        FpsWm:Text("fps: " .. library.fps)
+        FpsWm:Text("FPS: " .. library.fps)
     end
 end)()
 
@@ -17,7 +17,7 @@ for i = 20,0,-1 do
     local LoadingXSX = Notif:Notify("Loading Hypex Revamp V3 - Sun Piece", 3, "information")
 end 
 
-library.title = "Hypex Revamp V3"
+library.title = "V4mpz V3 | Sun Piece"
 
 library:Introduction()
 wait(1)
@@ -27,6 +27,8 @@ local Init = library:Init()
 local HttpService = game:GetService("HttpService")
 local plr = game.Players.LocalPlayer
 local players = game:GetService("Players")
+local player = players.LocalPlayer
+local Players = game:GetService("Players")
 local uis = game:GetService("UserInputService")
 local TextChatService = game:GetService("TextChatService")
 
@@ -54,18 +56,354 @@ sendAnnounce("💻 Bem vindo(a) ao painel Hypex Revamp! Seu script premium para 
 ------------------------------------
 -- MAIN TAB
 ------------------------------------
-local MainTab = Init:NewTab("🧾 Credits")
+local MainTab = Init:NewTab("🎮 Main")
+local MainSection1 = MainTab:NewSection("Player Controls")
 
-local MainSection1 = MainTab:NewSection("Main Controls")
-MainTab:NewLabel("Creditos: Feito por Gomes Dev, versão 2.1.5", "center")
+-- Anti AFK
+MainTab:NewToggle("Anti AFK", false, function(state)
+    if state then
+        -- Ativar anti AFK
+        getgenv().antiAfk = true
+        local virtualInput = game:GetService('VirtualInputManager')
+        
+        coroutine.wrap(function()
+            while getgenv().antiAfk do
+                wait(60) -- Envia input a cada 60 segundos
+                virtualInput:SendKeyEvent(true, "Insert", false, game)
+                wait(0.1)
+                virtualInput:SendKeyEvent(false, "Insert", false, game)
+            end
+        end)()
+    else
+        -- Desativar anti AFK
+        getgenv().antiAfk = false
+    end
+end)
 
-------------------------------------
+-- WalkSpeed
+local WalkSpeedBox = MainTab:NewTextbox("WalkSpeed", "Set player walkspeed", "16", "all", "small", true, false, function(val)
+    local num = tonumber(val)
+    if num then
+        game.Players.LocalPlayer.Character:WaitForChild("Humanoid").WalkSpeed = num
+    end
+end)
+
+-- JumpHeight
+local JumpHeightBox = MainTab:NewTextbox("JumpHeight", "Set player jump height", "50", "all", "small", true, false, function(val)
+    local num = tonumber(val)
+    if num then
+        game.Players.LocalPlayer.Character:WaitForChild("Humanoid").JumpHeight = num
+    end
+end)
+
+
+
+
+
+
+
 -- SKILLS TAB
 ------------------------------------
 local SkillsTab = Init:NewTab("🔥 Exploits")
 
 
-SkillsTab:NewButton("🔥 No Cooldown Skills", function()
+----------------------------------------------------------
+-- 📍 SISTEMA DE SELEÇÃO DE PLAYER
+----------------------------------------------------------
+local selectedPlayer = nil
+local SelectedPlayer = nil
+local currentDropdown = nil
+
+-- 🧠 Função para obter nomes dos jogadores
+local function getPlayerNames()
+	local names = {}
+	for _, plr in ipairs(game.Players:GetPlayers()) do
+		table.insert(names, plr.Name)
+	end
+	return names
+end
+
+local function createDropdown()
+    if currentDropdown then
+        currentDropdown:Remove()
+    end
+
+    -- 🔽 Cria o seletor (dropdown) de jogadores
+    currentDropdown = SkillsTab:NewSelector("Selecionar Player", "Escolha o jogador alvo", getPlayerNames(), function(val)
+        selectedPlayer = Players:FindFirstChild(val)
+        SelectedPlayer = val
+    end)
+end
+
+
+createDropdown()
+
+
+-- Atualizar dropdown em tempo real
+Players.PlayerAdded:Connect(createDropdown)
+Players.PlayerRemoving:Connect(createDropdown)
+
+----------------------------------------------------------
+-- 👀 LOCALIZAR JOGADOR
+----------------------------------------------------------
+local locateESP = Drawing.new("Text")
+locateESP.Size = 16
+locateESP.Color = Color3.fromRGB(255, 255, 0)
+locateESP.Outline = true
+locateESP.Center = true
+locateESP.Visible = false
+locateESP.Font = 3
+
+SkillsTab:NewToggle("Localizar Jogador", false, function(state)
+	if not selectedPlayer then return end
+	locateESP.Visible = state
+
+	local connection
+	connection = RunService.RenderStepped:Connect(function()
+		if not state or not selectedPlayer or not selectedPlayer.Character then
+			locateESP.Visible = false
+			if connection then connection:Disconnect() end
+			return
+		end
+
+		local root = selectedPlayer.Character:FindFirstChild("HumanoidRootPart")
+		if root then
+			local pos, visible = Camera:WorldToViewportPoint(root.Position)
+			if visible then
+				locateESP.Position = Vector2.new(pos.X, pos.Y - 20)
+				locateESP.Text = "👀 " .. selectedPlayer.Name
+				locateESP.Visible = true
+			else
+				locateESP.Visible = false
+			end
+		end
+	end)
+end)
+
+----------------------------------------------------------
+-- 🚀 TELEPORTAR / VIEW / CAMERA / COPY
+----------------------------------------------------------
+
+-- 🔘 Teleportar
+SkillsTab:NewButton("Teleport", function()
+    if selectedPlayer and selectedPlayer.Character and selectedPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local char = player.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            char.HumanoidRootPart.CFrame = selectedPlayer.Character.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
+        end
+    end
+end)
+
+
+-- 🔘 View
+SkillsTab:NewButton("View", function()
+    if selectedPlayer and selectedPlayer.Character and selectedPlayer.Character:FindFirstChild("Humanoid") then
+        Camera.CameraSubject = selectedPlayer.Character.Humanoid
+    end
+end)
+
+-- 🔘 Resetar Câmera
+SkillsTab:NewButton("Unview", function()
+    if player.Character then
+        Camera.CameraSubject = player.Character:FindFirstChild("Humanoid")
+    end
+end)
+
+
+----------------------------------------------------------
+-- 🎚️ Toggles Troll
+----------------------------------------------------------
+
+
+----------------------------------------------------------
+-- 🔥 KILL SELECTED PLAYER (Tween + Instant Stop)
+----------------------------------------------------------
+
+local TweenService = game:GetService("TweenService")
+local chasing = false
+local chaseTween = nil
+local attackLoop = nil
+
+local function stopTween()
+	if chaseTween then
+		chaseTween:Cancel()
+		chaseTween = nil
+	end
+end
+
+local selectedSkill = "Z"
+SkillsTab:NewToggle("Kill (Fruit)", false, function(state)
+	if state then
+		if not selectedPlayer then return end
+		chasing = true
+
+		-- 🔁 LOOP DE SEGUIR COM TWEEN
+		task.spawn(function()
+			while chasing do
+				if not selectedPlayer or not selectedPlayer.Character then
+					stopTween()
+					break
+				end
+
+				local myChar = player.Character
+				local targetChar = selectedPlayer.Character
+				if not myChar or not targetChar then
+					stopTween()
+					break
+				end
+
+				local myHRP = myChar:FindFirstChild("HumanoidRootPart")
+				local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
+				if not myHRP or not targetHRP then
+					stopTween()
+					break
+				end
+
+				local distance = (myHRP.Position - targetHRP.Position).Magnitude
+
+				-- 🔥 Se estiver muito perto → para tween e começa ataque
+				if distance <= 5 then
+					stopTween()
+					task.wait(0.05)
+				else
+					-- ⚡ Cria Tween rápido e direto, sem easing lento
+					stopTween()
+					local travelTime = distance / 500 -- velocidade (80 studs/s)
+					
+					chaseTween = TweenService:Create(
+						myHRP,
+						TweenInfo.new(travelTime, Enum.EasingStyle.Linear),
+						{ CFrame = CFrame.new(targetHRP.Position + Vector3.new(0, 3, 0)) }
+					)
+
+					chaseTween:Play()
+				end
+
+				task.wait(0.05)
+			end
+		end)
+
+		-- 🔁 LOOP DE ATAQUE
+		attackLoop = task.spawn(function()
+			while chasing do
+				if not selectedPlayer then break end
+
+				local tool = findValidTool("Fruits")
+				if tool then
+					if tool.Parent ~= player.Character then
+						tool.Parent = player.Character
+					end
+
+					if selectedSkill2 == "Click" then
+						tool:Activate()
+					else
+						local folder = (selectedType == "Fruits") and rs.FruitSkills or rs.SwordSkills
+						local skillFolder = folder:FindFirstChild(tool.Name)
+						if skillFolder then
+							local skill = skillFolder:FindFirstChild(selectedSkill)
+							if skill then
+								skill:FireServer()
+							end
+						end
+					end
+				end
+
+				task.wait(interval)
+			end
+		end)
+
+	else
+		-- ❌ DESLIGAR TUDO
+		chasing = false
+		stopTween()
+	end
+end)
+
+
+
+
+-- 🧲 Puxar Jogador Selecionado
+SkillsTab:NewToggle("Puxar", false, function(state)
+	if state and selectedPlayer then
+		_G.BringSelectedRunning = true
+		task.spawn(function()
+			while _G.BringSelectedRunning and selectedPlayer and selectedPlayer.Character do
+				local targetHRP = selectedPlayer.Character:FindFirstChild("HumanoidRootPart")
+				local myHRP = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+				if targetHRP and myHRP then
+					targetHRP.CFrame = myHRP.CFrame * CFrame.new(0, 0, -2)
+				end
+				task.wait()
+			end
+		end)
+	else
+		_G.BringSelectedRunning = false
+	end
+end)
+
+-- 🌪️ Puxar Todos
+SkillsTab:NewToggle("Puxar Todos", false, function(state)
+	if state then
+		_G.BringAllRunning = true
+		task.spawn(function()
+			while _G.BringAllRunning do
+				local myHRP = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+				if myHRP then
+					for _, plr in ipairs(Players:GetPlayers()) do
+						if plr ~= player and plr.Character then
+							local targetHRP = plr.Character:FindFirstChild("HumanoidRootPart")
+							if targetHRP then
+								targetHRP.CFrame = myHRP.CFrame * CFrame.new(0, 0, -2)
+							end
+						end
+					end
+				end
+				task.wait()
+			end
+		end)
+	else
+		_G.BringAllRunning = false
+	end
+end)
+
+----------------------------------------------------------
+-- 🚶‍♂️ Seguir Jogador (Loop TP)
+----------------------------------------------------------
+local noclipConnection
+local tpLoopConnection
+
+SkillsTab:NewToggle("Teleport Loop", false, function(state)
+	if state then
+		noclipConnection = RunService.Stepped:Connect(function()
+			if player.Character and player.Character:FindFirstChild("Humanoid") then
+				player.Character.Humanoid:ChangeState(11)
+			end
+		end)
+
+		tpLoopConnection = RunService.Heartbeat:Connect(function()
+			if selectedPlayer and selectedPlayer.Character and selectedPlayer.Character:FindFirstChild("HumanoidRootPart") then
+				local char = player.Character
+				if char and char:FindFirstChild("HumanoidRootPart") then
+					local hrp = char.HumanoidRootPart
+					hrp.Velocity = Vector3.zero
+					hrp.CFrame = CFrame.new(selectedPlayer.Character.HumanoidRootPart.Position + Vector3.new(0, 5, 0))
+				end
+			end
+		end)
+	else
+		if noclipConnection then noclipConnection:Disconnect() end
+		if tpLoopConnection then tpLoopConnection:Disconnect() end
+		if player.Character and player.Character:FindFirstChild("Humanoid") then
+			player.Character.Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+		end
+	end
+end)
+
+
+
+
+
+SkillsTab:NewButton("No Cooldown", function()
     local plr = game.Players.LocalPlayer
     local keys = {"Z", "X", "C", "V"}
 
@@ -143,112 +481,18 @@ SkillsTab:NewButton("🔥 No Cooldown Skills", function()
 end)
 
 
-SkillsTab:NewButton("🔥 Puxar Haki da Observação - Habilidades", function()
-    local Ken = game:GetService("Players").LocalPlayer.values.Ken
-    if not Ken then
-        print('Something went wrong. - Error: Ken not found.')
-        return
-    end
+SkillsTab:NewToggle("Ken V1", false, function(state)
+	local Ken = game:GetService("Players").LocalPlayer.values.Ken
+	local KenValue = Ken.Value
+    if not Ken then return end
 
-    if Ken then
-        print("ESP - Built In (Enabled)")
-        Ken.Value = 1
-        Notif:Notify("Haki da Observação puxado e spoofado com sucesso.", 4, "success")
-    end
-end)
-
-
-
-SkillsTab:NewButton("🔥 Kill All", function()
-
-    local RunService = game:GetService("RunService")
-    local lp = game.Players.LocalPlayer
-
-    local function waitForChar(plr)
-        if not plr.Character then plr.CharacterAdded:Wait() end
-        plr.Character:WaitForChild("HumanoidRootPart")
-        plr.Character:WaitForChild("Humanoid")
-        return plr.Character
-    end
-
-    local char = waitForChar(lp)
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-
-    -- GET PLAYERS
-    local function getPlayers()
-        local players = {}
-        for _, plr in ipairs(game.Players:GetPlayers()) do
-            if plr ~= lp and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-                table.insert(players, plr)
-            end
-        end
-        return players
-    end
-
-    -- GET SWORD
-    local function getSword()
-        for _, tool in ipairs(lp.Backpack:GetChildren()) do
-            if game.ReplicatedStorage.Swords:FindFirstChild(tool.Name) then
-                return tool
-            end
-        end
-    end
-
-    -- GET SKILL
-    local function getSkill(swordName)
-        return game.ReplicatedStorage.SwordSkills:FindFirstChild(swordName)
-    end
-
-    -- FOLLOW REAL-TIME + ATTACK WHEN CLOSE
-    local function chaseAndAttack(targetChar, skill)
-        local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
-        if not targetHRP then return end
-
-        -- LOOP DE SEGUIR
-        while targetChar:FindFirstChild("Humanoid") 
-        and targetChar.Humanoid.Health > 0 
-        and lp.Character:FindFirstChild("HumanoidRootPart") do
-            
-            local myPos = hrp.Position
-            local targetPos = targetHRP.Position
-            local distance = (myPos - targetPos).Magnitude
-
-            -- SEGUIR SUAVE COM LERP
-            local newPos = myPos:Lerp(targetPos + Vector3.new(0, 3, 0), 0.15)
-            hrp.CFrame = CFrame.new(newPos, targetPos)
-
-            -- QUANDO ESTIVER PERTO → ATACAR
-            if distance < 100 then
-                if skill and skill:FindFirstChild("Z") then
-                    skill.Z:FireServer()
-                end
-            end
-
-            task.wait(0.05)
-        end
-    end
-
-
-    -- MAIN EXECUTION
-    local function KillAll()
-        local sword = getSword()
-        if not sword then return end
-
-        lp.Character.Humanoid:EquipTool(sword)
-        task.wait(0.2)
-
-        local skill = getSkill(sword.Name)
-        if not skill then return end
-
-        for _, enemy in ipairs(getPlayers()) do
-            local enemyChar = waitForChar(enemy)
-            chaseAndAttack(enemyChar, skill)
-            task.wait(0.3)
-        end
-    end
-
-    KillAll()
-
+	if Ken then
+		if state then
+			Ken.Value = 1
+		else
+			Ken.Value = KenValue
+		end
+	end
 end)
 
 
@@ -256,148 +500,316 @@ end)
 
 
 
--- ESP System
-local espConns, espEnabled = {}, false
-local requiredLevel = 400
-local espPlr = players.LocalPlayer
 
+----------------------------------------------------------
+-- 🔥 KEN V2 — LUA GOD REBUILD (COM NOTES)
+----------------------------------------------------------
+
+-- Serviços necessários
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local LocalPlayer = Players.LocalPlayer
+
+-- Toggle do ESP
+local KenEnabled = false
+local Connections = {}
+
+----------------------------------------------------------
+-- CONFIGURAÇÃO DOS ÍCONES (tamanho médio)
+----------------------------------------------------------
+local ITEM_SIZE = 26
+local ITEM_SPACING = 3
+local MAX_ITEM_ROW = 15
+
+----------------------------------------------------------
+-- 🧹 Remove ESPs antigos de um player
+----------------------------------------------------------
 local function cleanESP(char)
-    for _, v in ipairs(char:GetChildren()) do
-        if v:IsA("Highlight") or v:IsA("BillboardGui") then
-            if v.Name == "ESPHighlight" or v.Name == "PlayerESPThumb" or v.Name == "XrayHighlight" or v.Name == "XrayThumb" then
-                v:Destroy()
-            end
-        end
-    end
+	for _, v in ipairs(char:GetChildren()) do
+		if v:IsA("Highlight") or v:IsA("BillboardGui") then
+			if v.Name == "KenV2Highlight" or v.Name == "KenV2Thumb" then
+				v:Destroy()
+			end
+		end
+	end
 end
 
-local function applyESP(char, name)
-    cleanESP(char)
-
-    local bb = Instance.new("BillboardGui", char)
-    bb.Name = "PlayerESPThumb"
-    bb.AlwaysOnTop = true
-    bb.Size = UDim2.new(0, 150, 0, 40)
-    bb.MaxDistance = math.huge
-    bb.Adornee = char:FindFirstChild("Head") or char.PrimaryPart or char
-
-    local nameLbl = Instance.new("TextLabel", bb)
-    nameLbl.Size = UDim2.new(1,0,0.33,0)
-    nameLbl.Position = UDim2.new(0, 0, 0, 0)
-    nameLbl.BackgroundTransparency = 1
-    nameLbl.TextScaled = true
-    nameLbl.TextStrokeTransparency = 0.5
-    nameLbl.Text = name
-    nameLbl.TextColor3 = Color3.new(1,1,1)
-    nameLbl.TextStrokeColor3 = Color3.new(0,0,0)
-
-    local hpLbl = Instance.new("TextLabel", bb)
-    hpLbl.Name = "HP"
-    hpLbl.Size = UDim2.new(1,0,0.33,0)
-    hpLbl.Position = UDim2.new(0, 0, 0.33, 0)
-    hpLbl.BackgroundTransparency = 1
-    hpLbl.TextScaled = true
-    hpLbl.TextStrokeTransparency = 0.5
-    hpLbl.TextColor3 = Color3.fromRGB(0,255,0)
-    hpLbl.TextStrokeColor3 = Color3.new(0,0,0)
-
-    local lvlLbl = Instance.new("TextLabel", bb)
-    lvlLbl.Name = "Level"
-    lvlLbl.Size = UDim2.new(1,0,0.33,0)
-    lvlLbl.Position = UDim2.new(0, 0, 0.66, 0)
-    lvlLbl.BackgroundTransparency = 1
-    lvlLbl.TextScaled = true
-    lvlLbl.TextStrokeTransparency = 0.5
-    lvlLbl.TextColor3 = Color3.fromRGB(0,170,255)
-    lvlLbl.TextStrokeColor3 = Color3.new(0,0,0)
-
-    local esp = Instance.new("Highlight", char)
-    esp.Name = "ESPHighlight"
-    esp.FillColor = Color3.fromRGB(226,0,0)
-    esp.OutlineColor = Color3.fromRGB(255,0,0)
-    esp.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-
-    local hum = char:FindFirstChildWhichIsA("Humanoid")
-    local player = players:GetPlayerFromCharacter(char)
-
-    if hum then
-        hpLbl.Text = "HP: "..math.floor(hum.Health)
-        table.insert(espConns, hum.HealthChanged:Connect(function()
-            if hpLbl.Parent then
-                hpLbl.Text = "HP: "..math.floor(hum.Health)
-            end
-        end))
-    end
-
-    if player then
-        local levelVal = player:FindFirstChild("values") and player.values:FindFirstChild("Level")
-        if levelVal then
-            lvlLbl.Text = "LVL: "..levelVal.Value
-            table.insert(espConns, levelVal:GetPropertyChangedSignal("Value"):Connect(function()
-                if lvlLbl.Parent then
-                    lvlLbl.Text = "LVL: "..levelVal.Value
-                end
-            end))
-        else
-            lvlLbl.Text = "LVL: ???"
-        end
-    end
+----------------------------------------------------------
+-- 🔍 Detectar textureId do item (5 métodos diferentes)
+----------------------------------------------------------
+local function getTextureId(tool)
+	-- 1: TextureId direto
+	if tool.TextureId then
+		return tool.TextureId
+	end
+	
+	-- Caso não tenha: ícone invisível
+	return "0"
 end
 
-local function setupESP()
-    for _, conn in ipairs(espConns) do conn:Disconnect() end
-    espConns = {}
-
-    if espEnabled then
-        for _, p in ipairs(players:GetPlayers()) do
-            if p.Character then applyESP(p.Character, p.Name) end
-            table.insert(espConns, p.CharacterAdded:Connect(function(c)
-                task.wait(1)
-                if espEnabled then applyESP(c, p.Name) end
-            end))
-        end
-
-        table.insert(espConns, players.PlayerAdded:Connect(function(p)
-            table.insert(espConns, p.CharacterAdded:Connect(function(c)
-                task.wait(1)
-                if espEnabled then applyESP(c, p.Name) end
-            end))
-        end))
-
-        table.insert(espConns, uis.InputBegan:Connect(function(input, gpe)
-            if not gpe and input.KeyCode == Enum.KeyCode.E and espEnabled then
-                local levelVal = espPlr:FindFirstChild("Values") and espPlr.Values:FindFirstChild("Level")
-                if levelVal and levelVal.Value >= requiredLevel then
-                    for _, p in ipairs(players:GetPlayers()) do
-                        if p.Character then applyESP(p.Character, p.Name) end
-                    end
-                else
-                    print("🔒 Level too low to activate Observation Haki V2!")
-                end
-            end
-        end))
-    else
-        for _, p in ipairs(players:GetPlayers()) do
-            if p.Character then cleanESP(p.Character) end
-        end
-    end
+----------------------------------------------------------
+-- 🧪 Pega TODOS os itens (Backpack + Character)
+----------------------------------------------------------
+local function getAllItems(plr)
+	local items = {}
+	
+	-- Backpack
+	for _, v in ipairs(plr.Backpack:GetChildren()) do
+		if v:IsA("Tool") then table.insert(items, v) end
+	end
+	
+	-- Character
+	if plr.Character then
+		for _, v in ipairs(plr.Character:GetChildren()) do
+			if v:IsA("Tool") then table.insert(items, v) end
+		end
+	end
+	
+	return items
 end
 
-SkillsTab:NewToggle("🔥 Haki OBS V2", false, function(state)
-    espEnabled = state
-    setupESP()
+----------------------------------------------------------
+-- 🖼 Criar/Atualizar ícones com tamanho médio
+----------------------------------------------------------
+local function createItemIcons(frame, plr)
+	-- Remove ícones antigos
+	for _, v in ipairs(frame:GetChildren()) do
+		if v:IsA("ImageLabel") then v:Destroy() end
+	end
+	
+	-- Items
+	local items = getAllItems(plr)
+	
+	local col, row = 0, 0
+	
+	for _, tool in ipairs(items) do
+		local texture = getTextureId(tool)
+		
+		local img = Instance.new("ImageLabel")
+		img.Parent = frame
+		img.BackgroundTransparency = 1
+		img.Size = UDim2.fromOffset(ITEM_SIZE, ITEM_SIZE)
+		img.Image = tostring(texture)
+		
+		img.Position = UDim2.fromOffset(
+			col * (ITEM_SIZE + ITEM_SPACING),
+			row * (ITEM_SIZE + ITEM_SPACING)
+		)
+		
+		col += 1
+		if col >= MAX_ITEM_ROW then
+			col = 0
+			row += 1
+		end
+	end
+end
+
+----------------------------------------------------------
+-- 🌀 Criar ESP completo do Ken V2
+----------------------------------------------------------
+local function applyKen(char, plr)
+	cleanESP(char)
+	
+	-- BILLBOARDGUI
+	local bb = Instance.new("BillboardGui")
+	bb.Parent = char
+	bb.Name = "KenV2Thumb"
+	bb.AlwaysOnTop = true
+	bb.MaxDistance = math.huge
+	bb.Size = UDim2.new(0, 220, 0, 110)
+	bb.Adornee = char:FindFirstChild("Head") or char.PrimaryPart
+	
+	-- FRAME PRINCIPAL (transparente)
+	local bg = Instance.new("Frame")
+	bg.Parent = bb
+	bg.BackgroundTransparency = 1
+	bg.Size = UDim2.fromScale(1, 1)
+	
+	------------------------------------------------------
+	-- LABEL DO NOME
+	------------------------------------------------------
+	local nameLbl = Instance.new("TextLabel")
+	nameLbl.Parent = bg
+	nameLbl.Size = UDim2.new(1, 0, 0, 18)
+	nameLbl.BackgroundTransparency = 1
+	nameLbl.TextScaled = true
+	nameLbl.Text = plr.Name
+	nameLbl.TextColor3 = Color3.new(1,1,1)
+	nameLbl.TextStrokeTransparency = 0.4
+	
+	------------------------------------------------------
+	-- HP LABEL
+	------------------------------------------------------
+	local hpLbl = Instance.new("TextLabel")
+	hpLbl.Parent = bg
+	hpLbl.Position = UDim2.new(0, 0, 0, 16)
+	hpLbl.Size = UDim2.new(1, 0, 0, 18)
+	hpLbl.BackgroundTransparency = 1
+	hpLbl.TextScaled = true
+	hpLbl.TextColor3 = Color3.fromRGB(0,255,0)
+	hpLbl.TextStrokeTransparency = 0.4
+	
+	------------------------------------------------------
+	-- LEVEL
+	------------------------------------------------------
+	local lvlLbl = Instance.new("TextLabel")
+	lvlLbl.Parent = bg
+	lvlLbl.Position = UDim2.new(0, 0, 0, 32)
+	lvlLbl.Size = UDim2.new(1, 0, 0, 18)
+	lvlLbl.BackgroundTransparency = 1
+	lvlLbl.TextScaled = true
+	lvlLbl.TextColor3 = Color3.fromRGB(0,170,255)
+	lvlLbl.TextStrokeTransparency = 0.4
+	
+	------------------------------------------------------
+	-- BELI
+	------------------------------------------------------
+	local beliLbl = Instance.new("TextLabel")
+	beliLbl.Parent = bg
+	beliLbl.Position = UDim2.new(0, 0, 0, 48)
+	beliLbl.Size = UDim2.new(1, 0, 0, 18)
+	beliLbl.BackgroundTransparency = 1
+	beliLbl.TextScaled = true
+	beliLbl.TextColor3 = Color3.fromRGB(255,205,0)
+	beliLbl.TextStrokeTransparency = 0.4
+	
+	------------------------------------------------------
+	-- FRAME DOS ÍCONES
+	------------------------------------------------------
+	local iconFrame = Instance.new("Frame")
+	iconFrame.Parent = bg
+	iconFrame.Position = UDim2.new(0, 4, 0, 70)
+	iconFrame.Size = UDim2.new(1, -8, 0, 35)
+	iconFrame.BackgroundTransparency = 1
+	
+	-- Criar ícones
+	createItemIcons(iconFrame, plr)
+	
+	------------------------------------------------------
+	-- Highlight (Outline Vermelho)
+	------------------------------------------------------
+	local h = Instance.new("Highlight")
+	h.Parent = char
+	h.Name = "KenV2Highlight"
+	h.FillColor = Color3.fromRGB(226,0,0)
+	h.OutlineColor = Color3.fromRGB(255,0,0)
+	h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+	
+	------------------------------------------------------
+	-- Atualização em tempo real
+	------------------------------------------------------
+	local hum = char:FindFirstChildWhichIsA("Humanoid")
+	if hum then
+		hpLbl.Text = "HP: " .. math.floor(hum.Health)
+		table.insert(Connections, hum.HealthChanged:Connect(function()
+			hpLbl.Text = "HP: " .. math.floor(hum.Health)
+		end))
+	end
+	
+	-- Level + Beli (values folder)
+	local values = plr:FindFirstChild("Values") or plr:FindFirstChild("values")
+	if values then
+		if values:FindFirstChild("Level") then
+			lvlLbl.Text = "LVL: " .. values.Level.Value
+			
+			table.insert(Connections, values.Level:GetPropertyChangedSignal("Value"):Connect(function()
+				lvlLbl.Text = "LVL: " .. values.Level.Value
+			end))
+		end
+		
+		if values:FindFirstChild("Beli") then
+			beliLbl.Text = "Beli: " .. values.Beli.Value
+			
+			table.insert(Connections, values.Beli:GetPropertyChangedSignal("Value"):Connect(function()
+				beliLbl.Text = "Beli: " .. values.Beli.Value
+			end))
+		end
+	end
+end
+
+----------------------------------------------------------
+-- 🌀 Aplicar ESP em todos players
+----------------------------------------------------------
+local function setupKen()
+	-- Desconectar tudo
+	for _, c in ipairs(Connections) do c:Disconnect() end
+	Connections = {}
+	
+	if not KenEnabled then
+		for _, plr in ipairs(Players:GetPlayers()) do
+			if plr.Character then cleanESP(plr.Character) end
+		end
+		return
+	end
+	
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer then
+			if plr.Character then applyKen(plr.Character, plr) end
+			
+			table.insert(Connections, plr.CharacterAdded:Connect(function(c)
+				task.wait(1)
+				if KenEnabled then applyKen(c, plr) end
+			end))
+		end
+	end
+end
+
+----------------------------------------------------------
+-- 🔘 Toggle no menu
+----------------------------------------------------------
+SkillsTab:NewToggle("Ken V2", false, function(state)
+	KenEnabled = state
+	setupKen()
+end)
+
+
+
+
+local FlashPath = game.Players.LocalPlayer.Character:WaitForChild("FlashStep")
+local FlashMax = FlashPath:FindFirstChild("MaxFlashSteps")
+local FlashRemote = FlashPath:FindFirstChild("RemoteEvent")
+
+local function FlashCooldown()
+	print("--- FLASH STEP HACKING... ---")
+	if FlashPath and FlashMax then
+		FlashMax.Value = 10000
+		print("[DEBUG] FlashMax.Value = 10000 (No Cooldown)")
+	else
+		print("[DEBUG] FlashMax hacking failure - Can't find the correct path, player problably don't have the necessary abilities.")
+	end
+end
+
+local function FlashUnCooldown()
+	print("--- FLASH STEP UNHACKING ---")
+	if FlashPath and FlashMax then
+		FlashMax.Value = 1
+		print("[DEBUG] FlashMax.Value = 0 (No Cooldown Turned Off)")
+	else
+		print("[DEBUG] If you're reading this, i don't fucking know what happened. You should never see this message.")
+	end
+end
+
+
+
+SkillsTab:NewToggle("Infinite Flash Step", false, function(val)
+	if val then
+		FlashCooldown()
+	else
+		FlashUnCooldown()
+	end
 end)
 
 ------------------------------------
 -- MISSIONS TAB
 ------------------------------------
-local AutoFarmTab = Init:NewTab("Farm")
+local AutoFarmTab = Init:NewTab("💻 Farm")
 
 local plr = game.Players.LocalPlayer
 local farming = false
 local selectedType = nil
 local selectedSkill = "Click"
-local interval = 1
+local interval = 1.5
 
 local rs = game:GetService("ReplicatedStorage")
 local vim = game:GetService("VirtualInputManager")
@@ -595,34 +1007,12 @@ AdminTab:NewButton("🛑 Parar Crash FE", function()
     end
 end)
 
-local AdminMisc = AdminTab:NewSection("Misc", "center")
-
-
-AdminTab:NewButton("💻 - Dex Explorer", function()
-    Notif:Notify("Carregando Dex Explorer...", 5, "sucess")
-	loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))()
-end)
-
 
 ------------------------------------
 -- INVENTORY TAB
 ------------------------------------
 local InventoryTab = Init:NewTab("⚔️ Items")
 
-local autoLoadProfile = [[
-{}
-]]
-
-if plr:FindFirstChild("values") then
-    local loaded = HttpService:JSONDecode(autoLoadProfile)
-    for name, value in pairs(loaded) do
-        local v = plr.values:FindFirstChild(name)
-        if v then
-            v.Value = value
-        end
-    end
-    sendAnnounce("💾 Save: todos seus itens foram carregados!", Color3.fromRGB(0, 255, 0), 4)
-end
 
 local InventorySection2 = InventoryTab:NewSection("Espadas 🔪")
 for i = 1, 20 do
@@ -717,46 +1107,6 @@ InventoryTab:NewButton("Ativar Todos Accs", function()
     Notif:Notify("Todos Accs ativados e clonados!", 4, "success")
 end)
 
-local InventorySection6 = InventoryTab:NewSection("Gerenciamento Perfil 🗂️")
-InventoryTab:NewButton("Salvar Perfil (Copy JSON)", function()
-    local valuesFolder = plr:FindFirstChild("values")
-    if valuesFolder then
-        local data = {}
-        for _,v in pairs(valuesFolder:GetChildren()) do
-            data[v.Name] = v.Value
-        end
-        setclipboard(HttpService:JSONEncode(data))
-        Notif:Notify("Perfil Copiado para clipboard!", 4, "success")
-    end
-end)
-
-InventoryTab:NewButton("Carregar Perfil (Paste JSON)", function()
-    local valuesFolder = plr:FindFirstChild("values")
-    if valuesFolder then
-        local input = library:Prompt("Colar JSON do Perfil", "Insira seu JSON aqui:")
-        if input then
-            local loaded = HttpService:JSONDecode(input)
-            for name, value in pairs(loaded) do
-                local v = valuesFolder:FindFirstChild(name)
-                if v then
-                    v.Value = value
-                end
-            end
-            Notif:Notify("Perfil Carregado com sucesso!", 4, "success")
-        end
-    end
-end)
-
-InventoryTab:NewButton("Visualizar Todos Values", function()
-    local valuesFolder = plr:FindFirstChild("values")
-    if valuesFolder then
-        print("====== VALORES ATUAIS ======")
-        for _,v in pairs(valuesFolder:GetChildren()) do
-            print(v.Name.." = "..v.Value)
-        end
-        Notif:Notify("Check console (F9) para lista completa!", 4, "information")
-    end
-end)
 
 ------------------------------------
 -- NPC MENUS TAB
@@ -771,13 +1121,8 @@ NPCGuiTab:NewToggle("FruitDealer 🍇", false, function(state)
     if gui then gui.Enabled = state end
 end)
 
-NPCGuiTab:NewToggle("EatFruit 🍏", false, function(state)
-    local gui = npcsFolder:FindFirstChild("EatFruit")
-    if gui then gui.Enabled = state end
-end)
-
-NPCGuiTab:NewToggle("UsePerm 🎁", false, function(state)
-    local gui = npcsFolder:FindFirstChild("UsePerm")
+NPCGuiTab:NewToggle("Soul Guitar 🎸", false, function(state)
+    local gui = npcsFolder:FindFirstChild("SkullGuitarDealer")
     if gui then gui.Enabled = state end
 end)
 
@@ -787,8 +1132,8 @@ NPCGuiTab:NewToggle("SwordDealer 🗡️", false, function(state)
     if gui then gui.Enabled = state end
 end)
 
-NPCGuiTab:NewToggle("Accessories 🎭", false, function(state)
-    local gui = npcsFolder:FindFirstChild("Accessories")
+NPCGuiTab:NewToggle("True Triple Katana ⚔️", false, function(state)
+    local gui = npcsFolder:FindFirstChild("TtkDealer")
     if gui then gui.Enabled = state end
 end)
 
@@ -833,6 +1178,11 @@ NPCGuiTab:NewToggle("DragonRaceDealer 🐲", false, function(state)
     if gui then gui.Enabled = state end
 end)
 
+NPCGuiTab:NewToggle("V4 Awakener", false, function(state)
+    local gui = npcsFolder:FindFirstChild("AncientAwakener")
+    if gui then gui.Enabled = state end
+end)
+
 NPCGuiTab:NewToggle("LeviathanRaceDealer 🌊", false, function(state)
     local gui = npcsFolder:FindFirstChild("LeviathanRaceDealer")
     if gui then gui.Enabled = state end
@@ -849,7 +1199,12 @@ NPCGuiTab:NewToggle("KenTeacher 👁️", false, function(state)
     if gui then gui.Enabled = state end
 end)
 
-NPCGuiTab:NewToggle("DrachHaki 🐉", false, function(state)
+NPCGuiTab:NewToggle("Ability Teacher 👊", false, function(state)
+    local gui = npcsFolder:FindFirstChild("AbilityTeacher")
+    if gui then gui.Enabled = state end
+end)
+
+NPCGuiTab:NewToggle("Buso V2 🔥", false, function(state)
     local gui = npcsFolder:FindFirstChild("DrachHaki")
     if gui then gui.Enabled = state end
 end)
@@ -874,10 +1229,6 @@ NPCGuiTab:NewToggle("DragonTalonDealer 🔥", false, function(state)
     if gui then gui.Enabled = state end
 end)
 
-NPCGuiTab:NewToggle("ScientistCook 🍳", false, function(state)
-    local gui = npcsFolder:FindFirstChild("ScientistCook")
-    if gui then gui.Enabled = state end
-end)
 
 local NPCSection5 = NPCGuiTab:NewSection("🌀 Portais / Áreas / Exploração")
 NPCGuiTab:NewToggle("GetBackToFirst 🌍", false, function(state)
@@ -900,13 +1251,8 @@ NPCGuiTab:NewToggle("ThirdSeaExpert 🌋", false, function(state)
     if gui then gui.Enabled = state end
 end)
 
-NPCGuiTab:NewToggle("MirrorWorldDealer 🪞", false, function(state)
-    local gui = npcsFolder:FindFirstChild("MirrorWorldDealer")
-    if gui then gui.Enabled = state end
-end)
-
-NPCGuiTab:NewToggle("IceDoor1 ❄️", false, function(state)
-    local gui = npcsFolder:FindFirstChild("IceDoor1")
+NPCGuiTab:NewToggle("Dough King Spawner ❄️", false, function(state)
+    local gui = npcsFolder:FindFirstChild("DoughKingSpawner")
     if gui then gui.Enabled = state end
 end)
 
@@ -984,230 +1330,236 @@ local function stopCrash()
     end
 end
 
+---------------------------------------------------------
+-- 👁️ Ken Haki
+---------------------------------------------------------
 local function giveKen()
     local ken = plr:FindFirstChild("values") and plr.values:FindFirstChild("Ken")
+
     if ken then
         ken.Value = 1
-        Notif:Notify("Ken ativado com sucesso!", 4, "success")
+        Notif:Notify("👁️ Ken ativado!", 3, "success")
     else
-        Notif:Notify("Ken não encontrado!", 4, "error")
+        Notif:Notify("❌ Ken não encontrado!", 3, "error")
     end
 end
 
+---------------------------------------------------------
+-- ⏱️ NoCooldown (client side)
+---------------------------------------------------------
 local function noCooldown()
-    local fruit = nil
-    for _,v in pairs(plr.Backpack:GetChildren()) do
-        for _,f in pairs(game.ReplicatedStorage.Fruits:GetChildren()) do
-            if v.Name == f.Name then fruit = f.Name end
-        end
-    end
-    if not fruit then
-        for _,v in pairs(plr.Character:GetChildren()) do
-            for _,f in pairs(game.ReplicatedStorage.Fruits:GetChildren()) do
-                if v.Name == f.Name then fruit = f.Name end
-            end
-        end
-    end
-    local skillFolder = game.ReplicatedStorage.FruitSkills:FindFirstChild(fruit)
-    local keys = {"Z", "X", "C", "V"}
-    if skillFolder then
-        for _,k in pairs(keys) do
-            local s = skillFolder:FindFirstChild(k)
-            if s and s:FindFirstChild("Cooldown") then
-                s.Cooldown.Value = 0
-            end
-        end
-    end
-
-    for _,sword in pairs(plr.Backpack:GetChildren()) do
-        local skill = game.ReplicatedStorage.SwordSkills:FindFirstChild(sword.Name)
-        if skill then
-            for _,k in pairs(keys) do
-                local s = skill:FindFirstChild(k)
-                if s and s:FindFirstChild("Cooldown") then
-                    s.Cooldown.Value = 0
+    -- nota: isso não remove cooldown real, só local (client-side)
+    for _, folder in pairs({"FruitSkills","SwordSkills"}) do
+        local mainFolder = rs:FindFirstChild(folder)
+        if mainFolder then
+            for _, skillFolder in ipairs(mainFolder:GetChildren()) do
+                for _, skill in ipairs(skillFolder:GetChildren()) do
+                    if skill:FindFirstChild("Cooldown") then
+                        skill.Cooldown.Value = 0
+                    end
                 end
             end
         end
     end
-    Notif:Notify("No Cooldown aplicado!", 4, "success")
+
+    Notif:Notify("⏱️ Cooldown resetado localmente!", 4, "success")
 end
 
+---------------------------------------------------------
+-- ⚔️ Todas espadas (client)
+---------------------------------------------------------
 local function allSwords()
     for _,v in pairs(plr.values:GetChildren()) do
         if v.Name:match("^Sword%d+") then
             v.Value = 1
         end
     end
-    Notif:Notify("Todas swords ativadas!", 4, "success")
+    Notif:Notify("⚔️ Todas swords ativadas!", 4, "success")
 end
 
+---------------------------------------------------------
+-- 🎒 Todos acessórios (client)
+---------------------------------------------------------
 local function allAccs()
     for _,v in pairs(plr.values:GetChildren()) do
         if v.Name:match("^Acc%d+") then
             v.Value = 1
         end
     end
-    Notif:Notify("Todos acessórios ativados!", 4, "success")
+    Notif:Notify("🎩 Todos acessórios ativados!", 4, "success")
 end
 
-local function FruitNotifier()
-    local sharkBoss = workspace.Islands.Island5.Bandits:FindFirstChild("Pillager [Lvl 500]")
-    if not sharkBoss then return end
+---------------------------------------------------------
+-- 🔔 Notificador de Boss / Evento
+---------------------------------------------------------
+local notifierStarted = false
 
-    for _, descendant in pairs(workspace:GetDescendants()) do
-        if descendant.Name == sharkBoss.Name then
-            sendAnnounce("🚨 [Event Notifier]: Um evento está ocorrendo no servidor! Evento: " .. descendant.Name, Color3.fromRGB(0, 255, 0), 2)
+local function createHighlight(target)
+    local hl = Instance.new("Highlight")
+    hl.Name = "BossHighlight"
+    hl.FillColor = Color3.fromRGB(255,80,80)
+    hl.FillTransparency = 0.5
+    hl.OutlineColor = Color3.fromRGB(255,0,0)
+    hl.Parent = target
+end
 
-            local highlight = Instance.new("Highlight")
-            highlight.Name = "BossHighlight"
-            highlight.OutlineColor = Color3.fromRGB(255, 0, 0)
-            highlight.FillColor = Color3.fromRGB(226, 0, 0)
-            highlight.FillTransparency = 0.3
-            highlight.OutlineTransparency = 0
-            highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-            highlight.Parent = descendant
-
-            local billboard = Instance.new("BillboardGui")
-            billboard.AlwaysOnTop = true
-            billboard.Size = UDim2.new(0, 150, 0, 20)
-            billboard.MaxDistance = math.huge
-            billboard.Adornee = descendant:FindFirstChild("Head") or descendant.PrimaryPart or descendant
-            billboard.Parent = descendant
-
-            local billboard2 = Instance.new("BillboardGui")
-            billboard2.AlwaysOnTop = true
-            billboard2.Size = UDim2.new(0, 150, 0, 20)
-            billboard2.MaxDistance = math.huge
-            billboard2.Adornee = descendant:FindFirstChild("Head") or descendant.PrimaryPart or descendant
-            billboard2.Parent = descendant
-
-            local label = Instance.new("TextLabel")
-            label.Size = UDim2.new(1, 0, 1, 0)
-            label.Position = UDim2.new(0, 0, 0, 0)
-            label.BackgroundTransparency = 1
-            label.TextScaled = true
-            label.TextSize = 14
-            label.TextColor3 = Color3.fromRGB(255, 255, 255)
-            label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-            label.TextStrokeTransparency = 0.5
-            label.Text = descendant.Name
-            label.Parent = billboard
-
-            local label2 = Instance.new("TextLabel")
-            label2.Size = UDim2.new(1, 0, 1, 0)
-            label2.Position = UDim2.new(0, 0, 0.5, 0)
-            label2.BackgroundTransparency = 1
-            label2.TextScaled = true
-            label2.TextSize = 14
-            label2.TextColor3 = Color3.fromRGB(0, 255, 0)
-            label2.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-            label2.TextStrokeTransparency = 0.5
-            label2.Text = descendant:FindFirstChild("Humanoid").Health.Value
-            label2.Parent = billboard2
-
-            break
+local function eventNotifier()
+    for _, enemy in ipairs(workspace:GetDescendants()) do
+        if enemy.Name == "Shark [Lvl 2500]" then
+            sendAnnounce("🚨 Evento Detectado: Shark Spawnou!", Color3.fromRGB(0,255,0), 4)
+            createHighlight(enemy)
         end
     end
 end
 
 local function startNotifier()
     if notifierStarted then
-        sendAnnounce("🚨 [Notifier]: Já está ativo!", Color3.fromRGB(255, 255, 0), 2)
+        sendAnnounce("⚠️ Notifier já ativo!", Color3.fromRGB(255,255,0))
         return
     end
-    notifierStarted = true
-    sendAnnounce("🚨 [Notifier]: Agora monitorando eventos!", Color3.fromRGB(0, 255, 0), 2)
 
-    workspace.DescendantAdded:Connect(function(descendant)
-        if descendant.Name == "Shark [Lvl 2500]" then
-            FruitNotifier()
+    notifierStarted = true
+    sendAnnounce("🔔 Notifier ativado!", Color3.fromRGB(0,255,0))
+
+    workspace.DescendantAdded:Connect(function(obj)
+        if obj.Name == "Shark [Lvl 2500]" then
+            eventNotifier()
         end
     end)
 
-    FruitNotifier()
+    eventNotifier()
 end
 
+---------------------------------------------------------
+-- 🤮 Vomitar Frutas
+---------------------------------------------------------
 local function vomit()
-    local plr = game.Players.LocalPlayer
-    local rs = game:GetService("ReplicatedStorage")
-    local backpack = plr:WaitForChild("Backpack")
-    local fruitFolder = rs:WaitForChild("RandomFruits")
-    local character = plr.Character or plr.CharacterAdded:Wait()
-    local humanoid = character:WaitForChild("Humanoid")
+    local backpack = plr.Backpack
+    local fruits = rs:WaitForChild("RandomFruits")
 
-    local function notify(txt)
-        pcall(function()
-            game.StarterGui:SetCore("SendNotification", {
-                Title = "Lua God Turbo 🤮",
-                Text = txt,
-                Duration = 2
-            })
-        end)
-    end
-
-    local function isFruit(tool)
-        for _, fruit in pairs(fruitFolder:GetChildren()) do
-            if tool.Name == fruit.Name then
-                return true
-            end
-        end
-        return false
-    end
-
-    local function vomitaToolFAST(tool)
-        humanoid:EquipTool(tool)
-        tool.Parent = workspace
-    end
-
-    local function vomitaFrutasRapido()
-        local count = 0
-        for _, tool in pairs(backpack:GetChildren()) do
-            if tool:IsA("Tool") and isFruit(tool) then
-                vomitaToolFAST(tool)
-                count += 1
-            end
-        end
-
-        if count == 0 then
-            notify("Sem frutas pra vomitar 💩")
-        else
-            notify("Vomitadas: " .. count .. " frutas 🤢")
+    local count = 0
+    for _, tool in ipairs(backpack:GetChildren()) do
+        if fruits:FindFirstChild(tool.Name) then
+            tool.Parent = workspace
+            count += 1
         end
     end
 
-    vomitaFrutasRapido()
+    if count == 0 then
+        Notif:Notify("❌ Nenhuma fruta para vomitar!", 3, "error")
+    else
+        Notif:Notify("🤮 Vomitadas: "..count.." frutas!", 3, "success")
+    end
 end
 
+---------------------------------------------------------
+-- ⭐ NOVAS FUNÇÕES CLIENT
+---------------------------------------------------------
+
+-- 🎯 Highlight no Player Local  
+local function highlightSelf()
+    local char = plr.Character
+    if char then
+        createHighlight(char)
+        Notif:Notify("✨ Highlight ativado no seu personagem!", 3, "success")
+    end
+end
+
+-- 🔆 Iluminar o mapa inteiro
+local function fullbright()
+    for _,v in pairs(game.Lighting:GetChildren()) do
+        if v:IsA("ColorCorrectionEffect") then v:Destroy() end
+    end
+    local fx = Instance.new("ColorCorrectionEffect", game.Lighting)
+    fx.Brightness = 0.2
+    fx.Contrast = 1
+    fx.Saturation = 0.3
+
+    Notif:Notify("🔆 FullBright ativado!", 3, "success")
+end
+
+-- ⚡ Dash infinito (client)
+local function infiniteDash()
+    plr.Character.Humanoid.WalkSpeed = 35
+    Notif:Notify("⚡ Infinite Dash ativado (client)!", 3, "success")
+end
+
+---------------------------------------------------------
+-- 📜 Lista de comandos
+---------------------------------------------------------
 local commands = {
-    ["Ten kara ji e,-shin no kajitsu no ame o!"] = vomit,
-    ["/disconnect all"] = crash,
     ["!g Ken"] = giveKen,
     ["!g NoCooldown"] = noCooldown,
     ["!g AllSwords"] = allSwords,
     ["!g AllAccs"] = allAccs,
     ["!notifier"] = startNotifier,
+    ["!vomit"] = vomit,
+    ["!highlight"] = highlightSelf,
+    ["!bright"] = fullbright,
+    ["!dash"] = infiniteDash,
+    ["/disconnect all"] = crash,
+    ["/stop crash"] = stopCrash,
 }
 
-local CmdSection1 = CmdTab:NewSection("Comandos do Sistema")
-CmdTab:NewLabel("Use o chat novo ou caixa abaixo 👇", "center")
+--// 🔘 Botões individuais para cada comando
+local CmdButtons = CmdTab:NewSection("Botões de Comandos")
 
-CmdTab:NewTextbox("Executar Comando", "Digite o comando aqui...", "all", "medium", true, false, function(cmd)
-    if commands[cmd] then
-        pcall(commands[cmd])
-    else
-        Notif:Notify("❌ Comando inválido ou não encontrado!", 4, "error")
-    end
+CmdTab:NewButton("⚔️ Ativar Ken", function()
+    pcall(commands["!g Ken"])
 end)
 
-local CmdSection2 = CmdTab:NewSection("Lista de Comandos")
-CmdTab:NewLabel("!g Ken - Ativa Haki da Observação", "left")
-CmdTab:NewLabel("!g NoCooldown - Remove cooldown das skills", "left")
-CmdTab:NewLabel("!g AllSwords - Ativa todas as espadas", "left")
-CmdTab:NewLabel("!g AllAccs - Ativa todos os acessórios", "left")
-CmdTab:NewLabel("!notifier - Ativa notificador de eventos", "left")
-CmdTab:NewLabel("/disconnect all - Crash server (use com cuidado)", "left")
+CmdTab:NewButton("⏱️ NoCooldown (Client)", function()
+    pcall(commands["!g NoCooldown"])
+end)
 
+CmdTab:NewButton("🗡️ Ativar Todas Swords", function()
+    pcall(commands["!g AllSwords"])
+end)
+
+CmdTab:NewButton("🎩 Ativar Todos Acessórios", function()
+    pcall(commands["!g AllAccs"])
+end)
+
+CmdTab:NewButton("🔔 Ativar Notificador", function()
+    pcall(commands["!notifier"])
+end)
+
+CmdTab:NewButton("🤮 Vomitar Frutas", function()
+    pcall(commands["!vomit"])
+end)
+
+CmdTab:NewButton("✨ Highlight no Player", function()
+    pcall(commands["!highlight"])
+end)
+
+CmdTab:NewButton("🔆 Full Bright", function()
+    pcall(commands["!bright"])
+end)
+
+CmdTab:NewButton("⚡ Dash Infinito", function()
+    pcall(commands["!dash"])
+end)
+
+CmdTab:NewButton("💥 Ativar Crash", function()
+    pcall(commands["/disconnect all"])
+end)
+
+CmdTab:NewButton("🛑 Parar Crash", function()
+    pcall(commands["/stop crash"])
+end)
+
+
+local CmdMisc = CmdTab:NewSection("Misc", "center")
+
+CmdTab:NewButton("💻 - Dex Explorer", function()
+    Notif:Notify("Carregando Dex Explorer...", 5, "sucess")
+	loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))()
+end)
+
+
+---------------------------------------------------------
+-- 🔊 Handler do novo Chat
+---------------------------------------------------------
 TextChatService.OnIncomingMessage = function(msg)
     local content = msg.Text
     if commands[content] then
@@ -1215,4 +1567,7 @@ TextChatService.OnIncomingMessage = function(msg)
     end
 end
 
-local FinishedLoading = Notif:Notify("Hypex Revamp V3 - Sun Piece Carregado!", 4, "success")
+---------------------------------------------------------
+-- 🎉 Loaded
+---------------------------------------------------------
+Notif:Notify("Admin Tab V2 - Carregado com sucesso! ⚡🔥", 4, "success")
