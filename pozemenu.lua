@@ -1793,20 +1793,25 @@ print("Sistema de visuals carregado. ESPWall disponível!")
 
 
 
-
-
-
--- Variáveis obrigatórias
 local UserInputService = game:GetService("UserInputService")
-local Camera = workspace.CurrentCamera
+local Workspace = game:GetService("Workspace")
+local Camera = Workspace.CurrentCamera
 
+-- Configurações
 local AimFovEnabled = false
 local FOV = 100
 local smoothness = 0.15
 local aimTarget = "Head"
 local aiming = false
 
--- Criação do círculo FOV
+-- Novas variáveis que você pediu
+local AutoLockEnabled = false         -- mira automaticamente mesmo sem segurar LMB
+local TriggerCheckEnabled = false     -- detecta se pode atirar (sem atirar)
+local WallCheckEnabled = false        -- verifica se existe parede entre player e alvo
+
+-----------------------------------------------------------
+-- 🎯 FOV ESTÁTICO NO CENTRO DA TELA
+-----------------------------------------------------------
 local fovCircle = Drawing.new("Circle")
 fovCircle.Color = Color3.fromRGB(255, 255, 255)
 fovCircle.Thickness = 2
@@ -1814,77 +1819,198 @@ fovCircle.Filled = false
 fovCircle.Radius = FOV
 fovCircle.Visible = AimFovEnabled
 
--- Detecta clique do mouse
-UserInputService.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		aiming = true
-	end
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		aiming = false
-	end
-end)
-
--- Atualiza posição do FOV no mouse
 local function update_fov_circle()
-	if AimFovEnabled then
-		local mousePos = UserInputService:GetMouseLocation()
-		fovCircle.Position = Vector2.new(mousePos.X, mousePos.Y)
-		fovCircle.Radius = FOV
-	end
-end
-
--- Toggle do AimFOV
-local function toggle_fov(bool)
-	AimFovEnabled = bool
-	fovCircle.Visible = bool
-end
-
--- Verifica se o alvo tá dentro do círculo FOV (no mouse)
-local function is_within_fov(pos)
-	if not AimFovEnabled then return false end
-	local screen_pos, on_screen = Camera:WorldToViewportPoint(pos)
-	if not on_screen then return false end
-
-	local mousePos = UserInputService:GetMouseLocation()
-	return (Vector2.new(screen_pos.X, screen_pos.Y) - mousePos).Magnitude <= FOV
-end
-
--- Lógica do aimbot travando no alvo
-local function aim_at_target()
-	if not AimFovEnabled or not aiming then return end
-	local char = player.Character
-	if not Camera or not char or not char:FindFirstChild("HumanoidRootPart") then return end
-
-	local closest, closestDist = nil, math.huge
-
-	for _, p in ipairs(Players:GetPlayers()) do
-		if p ~= player and p.Character and p.Character:FindFirstChild(aimTarget) then
-			local part = p.Character[aimTarget]
-			if part and is_within_fov(part.Position) then
-				local dist = (part.Position - char.HumanoidRootPart.Position).Magnitude
-				if dist < closestDist then
-					closest, closestDist = part.Position, dist
-				end
-			end
-		end
-	end
-
-    if closest then
-        local dir = (closest - camera.CFrame.Position).Unit
-        camera.CFrame = CFrame.new(camera.CFrame.Position, camera.CFrame.Position + camera.CFrame.LookVector:Lerp(dir, smoothness))
+    if AimFovEnabled then
+        local center = Camera.ViewportSize / 2
+        fovCircle.Position = Vector2.new(center.X, center.Y)
+        fovCircle.Radius = FOV
     end
 end
 
--- Loop de renderização
-RunService.RenderStepped:Connect(function()
-	update_fov_circle()
-	aim_at_target()
+-----------------------------------------------------------
+-- 🔎 ENCONTRA A MENOR PART (não BasePart, só Part)
+-----------------------------------------------------------
+local function findSmallestPart(character)
+    local smallest = nil
+    local smallestSize = math.huge
+
+    for _, part in ipairs(character:GetChildren()) do
+        if part:IsA("Part") then
+            local size = part.Size.X * part.Size.Y * part.Size.Z
+            if size < smallestSize then
+                smallestSize = size
+                smallest = part
+            end
+        end
+    end
+
+    return smallest
+end
+
+-----------------------------------------------------------
+-- 🎯 OBTÉM A PARTE ALVO CORRETA
+-----------------------------------------------------------
+local function getTargetPart(character)
+    if aimTarget == "HumanoidRootPart" then
+        return character:FindFirstChild("HumanoidRootPart")
+    end
+
+    local head = character:FindFirstChild("Head")
+    if head then
+        return head
+    end
+
+    -- fallback caso a head seja renomeada
+    return findSmallestPart(character)
+end
+
+-----------------------------------------------------------
+-- 🔦 SISTEMA DE WALL CHECK
+-----------------------------------------------------------
+local function wallCheck(origin, target)
+    if not WallCheckEnabled then
+        return true -- se wall check off, sempre permite
+    end
+
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Blacklist
+    params.FilterDescendantsInstances = {player.Character}
+
+    local result = Workspace:Raycast(origin, (target - origin).Unit * 5000, params)
+
+    if not result then
+        return true
+    end
+
+    -- só aceita se o hit for no próprio alvo
+    return result.Instance and result.Instance:IsDescendantOf(target.Parent)
+end
+
+-----------------------------------------------------------
+-- 🎯 CHECA SE ESTÁ NO FOV CENTRAL
+-----------------------------------------------------------
+local function is_within_fov(worldpos)
+    if not AimFovEnabled then return false end
+
+    local screenPos, visible = Camera:WorldToViewportPoint(worldpos)
+    if not visible then return false end
+
+    local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+    local dist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
+
+    return dist <= FOV
+end
+
+-----------------------------------------------------------
+-- 🔥 FUNÇÃO PRINCIPAL DO AIMBOT
+-----------------------------------------------------------
+local currentTarget = nil
+
+local function getClosestTarget()
+    local char = player.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return nil end
+
+    local closest = nil
+    local closestDist = math.huge
+
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= player and plr.Character then
+            
+            local part = getTargetPart(plr.Character)
+            if part and is_within_fov(part.Position) then
+
+                if wallCheck(Camera.CFrame.Position, part.Position) then
+                    local dist = (part.Position - char.HumanoidRootPart.Position).Magnitude
+                    if dist < closestDist then
+                        closestDist = dist
+                        closest = part
+                    end
+                end
+            end
+        end
+    end
+
+    return closest
+end
+
+-----------------------------------------------------------
+-- 🎯 AIM SMOOTH + AUTOLOCK
+-----------------------------------------------------------
+local function aim_at_target()
+    if not AimFovEnabled then return end
+
+    -- Se autolock estiver ligado, mira sempre
+    -- Se estiver off, mira apenas quando LMB estiver pressionado
+    if not AutoLockEnabled and not aiming then
+        currentTarget = nil
+        return
+    end
+
+    currentTarget = getClosestTarget()
+
+    if currentTarget then
+        local dir = (currentTarget.Position - Camera.CFrame.Position).Unit
+        Camera.CFrame = CFrame.new(
+            Camera.CFrame.Position,
+            Camera.CFrame.Position + Camera.CFrame.LookVector:Lerp(dir, smoothness)
+        )
+    end
+end
+
+-----------------------------------------------------------
+-- 🔫 TRIGGER CHECK (SEM DISPARAR!)
+-----------------------------------------------------------
+local CanShootTarget = false -- variável pra você usar no seu sistema de tiro
+
+local function trigger_check()
+    if not TriggerCheckEnabled then
+        CanShootTarget = false
+        return
+    end
+
+    if currentTarget then
+        -- Já passou pelo wall check na seleção do alvo
+        CanShootTarget = true
+    else
+        CanShootTarget = false
+    end
+end
+
+-----------------------------------------------------------
+-- 🖱 CONTROLE DO LMB (só ativa mira normal)
+-----------------------------------------------------------
+UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        aiming = true
+    end
 end)
 
-print("Sistema de Aimfov carregado.")
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        aiming = false
+    end
+end)
+
+-----------------------------------------------------------
+-- ON/OFF DO FOV
+-----------------------------------------------------------
+local function toggle_fov(state)
+    AimFovEnabled = state
+    fovCircle.Visible = state
+end
+
+-----------------------------------------------------------
+-- LOOP PRINCIPAL
+-----------------------------------------------------------
+RunService.RenderStepped:Connect(function()
+    update_fov_circle()
+    aim_at_target()
+    trigger_check()
+end)
+
+print("Sistema completo carregado com AutoLock, TriggerCheck e WallCheck 🔥")
+
+
 
 
 
@@ -1896,47 +2022,47 @@ print("Sistema de Aimfov carregado.")
 
 
 -- 🟢 ESP Geral
-local ToggleESP = Tab1:NewToggle("ESP Geral", false, function(val)
+Tab1:NewToggle("ESP Geral", false, function(val)
     ESPEnabled = val
 end)
 
 -- 🟢 ESP Box
-local ToggleBox = Tab1:NewToggle("ESP Box", false, function(val)
+Tab1:NewToggle("ESP Box", false, function(val)
     ESPBox = val
 end)
 
 -- 🟢 ESP Tracer
-local ToggleTracer = Tab1:NewToggle("ESP Tracer", false, function(val)
+Tab1:NewToggle("ESP Tracer", false, function(val)
     ESPTracer = val
 end)
 
 -- 🟢 ESP Nome
-local ToggleName = Tab1:NewToggle("ESP Name", false, function(val)
+Tab1:NewToggle("ESP Name", false, function(val)
     ESPName = val
 end)
 
 -- 🟢 ESP Distância
-local ToggleDistance = Tab1:NewToggle("ESP Distance", false, function(val)
+Tab1:NewToggle("ESP Distance", false, function(val)
     ESPDistance = val
 end)
 
 -- 🟢 ESP Através da Parede
-local ToggleWall = Tab1:NewToggle("ESP Wall", false, function(val)
+Tab1:NewToggle("ESP Wall", false, function(val)
     ESPWall = val
 end)
 
 -- 🟢 ESP Times
-local ToggleTeams = Tab1:NewToggle("ESP Teams", false, function(val)
+Tab1:NewToggle("ESP Teams", false, function(val)
     ESPTeams = val
 end)
 
 -- 🟢 ESP Arma
-local ToggleGun = Tab1:NewToggle("ESP Gun", false, function(val)
+Tab1:NewToggle("ESP Gun", false, function(val)
     ESPGun = val
 end)
 
 -- 🟢 ESP Esqueleto
-local ToggleSkeleton = Tab1:NewToggle("ESP Skeleton", false, function(val)
+Tab1:NewToggle("ESP Skeleton", false, function(val)
     ESPSkeleton = val
 end)
 
@@ -1944,22 +2070,43 @@ end)
 
 
 -- 🟢 Aim Fov
-local ToggleFov = Tab1:NewToggle("Aim Fov", false, function(val)
+Tab1:NewToggle("Auto Lock", false, function(val)
+    AutoLockEnabled = val
+end)
+
+
+-- 🟢 Aim Fov
+Tab1:NewToggle("Trigger Bot", false, function(val)
+    TriggerCheckEnabled = val
+end)
+
+
+-- 🟢 Aim Fov
+Tab1:NewToggle("Wall Check", false, function(val)
+    WallCheckEnabled = val
+end)
+
+
+
+
+-- 🟢 Aim Fov
+Tab1:NewToggle("Aim Fov", false, function(val)
     toggle_fov(val)
 end)
 
+
 -- 🟣 Aimfov Suavidade (Smoothness)
-local SliderSmoothness = Tab1:NewSlider("Aimfov Smoothness", "Controla a suavidade do AimFOV", false, "/", {min = 1, max = 100, default = 50}, function(val)
+Tab1:NewSlider("Aimfov Smoothness", "Controla a suavidade do AimFOV", false, "/", {min = 1, max = 100, default = 50}, function(val)
     smoothness = val / 100 -- converte o valor pra 0.01 - 1.00
 end)
 
 -- 🟣 Aimfov Tamanho (Size)
-local SliderFovSize = Tab1:NewSlider("Aimfov Size", "Define o tamanho do AimFOV", false, "/", {min = 1, max = 100, default = 50}, function(val)
+Tab1:NewSlider("Aimfov Size", "Define o tamanho do AimFOV", false, "/", {min = 1, max = 350 , default = 50}, function(val)
     FOV = val
 end)
 
 -- 🎯 AimPart Selector
-local AimPartSelector = Tab1:NewSelector("AimPart", "Escolha qual parte mirar", {"Head", "HumanoidRootPart"}, function(part)
+Tab1:NewSelector("AimPart", "Escolha qual parte mirar", {"Head", "HumanoidRootPart"}, function(part)
     AimTargetPart = part
 end)
 
@@ -2298,7 +2445,6 @@ end
 
 local TweenService = game:GetService("TweenService")
 local Camera = workspace.CurrentCamera
-local UserInputService = game:GetService("UserInputService")
 
 local FLYING = false
 local QEfly = true
@@ -2636,7 +2782,6 @@ end)
 
 
 
-local UserInputService = game:GetService("UserInputService")
 local Camera = workspace.CurrentCamera
 
 local cameraPos = Vector3.new()
@@ -3293,7 +3438,7 @@ end
 -- 💬 Caixa de entrada externa (GUI custom)
 ----------------------------------------------------------
 
-local Entry = Tab5:NewTextbox("Insira o argumento...", "", "1", "all", "small", true, false, function(val)
+Tab5:NewTextbox("Insira o argumento...", "", "1", "all", "small", true, false, function(val)
     inputtext = val
 end)
 
