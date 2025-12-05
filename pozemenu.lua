@@ -255,7 +255,7 @@ for i = 10,0,-1 do
     task.wait(0.05)
     local LoadingXSX = Notif:Notify("Poze MENU - Carregando...", 3, "information") -- notification, alert, error, success, information
 end 
-library.title = "Poze MENU | Troll | PREMIUM | v1.0.112"
+library.title = "Poze MENU | ANTI-RP | TESTING | v2.1.250"
 library:Introduction()
 wait(1)
 
@@ -263,11 +263,11 @@ wait(1)
 
 local Init = library:Init()
 
-local Tab1 = Init:NewTab("☠️ Visuals")
-local Tab2 = Init:NewTab("🌎 Online")
-local Tab3 = Init:NewTab("👤 Player")
-local Tab4 = Init:NewTab("🔫 Items")
-local Tab5 = Init:NewTab("[🛡️] Admin Dev")
+local Tab1 = Init:NewTab("PvP")
+local Tab2 = Init:NewTab("Online")
+local Tab3 = Init:NewTab("Player")
+local Tab4 = Init:NewTab("Armas")
+local Tab5 = Init:NewTab("Admin")
 
 
 
