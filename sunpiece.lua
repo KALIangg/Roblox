@@ -1,4 +1,5 @@
-local library = loadstring(game:HttpGet("https://rawcdn.githack.com/KALIangg/Roblox-UI-Libs/refs/heads/main/xsx%20Lib/xsx%20Lib%20Source.lua"))()
+-- local library = loadstring(game:HttpGet("https://rawcdn.githack.com/KALIangg/Roblox-UI-Libs/refs/heads/main/xsx%20Lib/xsx%20Lib%20Source.lua"))()
+local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/KALIangg/Roblox-UI-Libs/refs/heads/main/xsx%20Lib/xsx%20Lib%20Source.lua"))()
 
 library.rank = "Pro User"
 local Wm = library:Watermark("V4mpz V3 - Sun Piece | v" .. library.version .. " | " .. library:GetUsername() .. " | User: " .. library.rank)
@@ -17,7 +18,7 @@ for i = 20,0,-1 do
     local LoadingXSX = Notif:Notify("Loading Hypex Revamp V3 - Sun Piece", 3, "information")
 end 
 
-library.title = "V4mpz V3 | Sun Piece"
+library.title = "V4mpz V3 | FARM | PIECE"
 
 library:Introduction()
 wait(1)
@@ -51,12 +52,12 @@ local function sendAnnounce(text, color, duration)
 	msg:Destroy()
 end
 
-sendAnnounce("💻 Bem vindo(a) ao painel Hypex Revamp! Seu script premium para <Sun Piece>.", Color3.fromRGB(255, 255, 255), 4)
+sendAnnounce("🚀 Olá! Bem-vindo(a) ao painel HypeX Revamp – seu aliado premium em <Sun Piece>! Aproveite todos os recursos.", Color3.fromRGB(255, 255, 255), 4)
 
 ------------------------------------
 -- MAIN TAB
 ------------------------------------
-local MainTab = Init:NewTab("🎮 Main")
+local MainTab = Init:NewTab("Main")
 local MainSection1 = MainTab:NewSection("Player Controls")
 
 -- Anti AFK
@@ -104,7 +105,7 @@ end)
 
 -- SKILLS TAB
 ------------------------------------
-local SkillsTab = Init:NewTab("🔥 Exploits")
+local SkillsTab = Init:NewTab("Exploits")
 
 
 ----------------------------------------------------------
@@ -939,7 +940,7 @@ end)
 ------------------------------------
 -- SERVER TAB
 ------------------------------------
-local AdminTab = Init:NewTab("💣 Destruição")
+local AdminTab = Init:NewTab("Destruição")
 
 local crashing = false
 local crashConn
@@ -1011,7 +1012,7 @@ end)
 ------------------------------------
 -- INVENTORY TAB
 ------------------------------------
-local InventoryTab = Init:NewTab("⚔️ Items")
+local InventoryTab = Init:NewTab("Armas")
 
 
 local InventorySection2 = InventoryTab:NewSection("Espadas 🔪")
@@ -1111,7 +1112,7 @@ end)
 ------------------------------------
 -- NPC MENUS TAB
 ------------------------------------
-local NPCGuiTab = Init:NewTab("📱 Guis")
+local NPCGuiTab = Init:NewTab("GUIS")
 
 local npcsFolder = plr.PlayerGui["Npc's"]
 
@@ -1274,7 +1275,7 @@ end)
 ------------------------------------
 -- CMD SYSTEM TAB
 ------------------------------------
-local CmdTab = Init:NewTab("🛡️ Admin")
+local CmdTab = Init:NewTab("Administration")
 
 local crashingCmd = false
 local crashThread = nil
