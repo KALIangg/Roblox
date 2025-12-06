@@ -1755,7 +1755,7 @@ local function setupPlayer(plr)
 	if plr == localPlayer then return end
 
 	local function onCharacterAdded(char)
-		char:WaitForChild("Humanoid")
+		char:FindFirstChild("Humanoid")
 		createESP(plr)
 
 		-- remove instantâneo na morte
