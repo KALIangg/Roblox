@@ -1792,26 +1792,44 @@ print("Sistema de visuals carregado. ESPWall disponível!")
 
 
 
-
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
+local VirtualInput = game:GetService("VirtualInputManager")
+
 local Camera = Workspace.CurrentCamera
 
--- Configurações
-local AimFovEnabled = false
+-- CONFIG
+local AimFovEnabled = false  -- TRUE para habilitar aimbot
 local FOV = 100
 local smoothness = 0.15
-local aimTarget = "Head"
+local aimTarget = "Head"  -- "Head", "HumanoidRootPart", "UpperTorso"
 local aiming = false
 
--- Novas variáveis que você pediu
-local AutoLockEnabled = false         -- mira automaticamente mesmo sem segurar LMB
-local TriggerCheckEnabled = false     -- detecta se pode atirar (sem atirar)
-local WallCheckEnabled = false        -- verifica se existe parede entre player e alvo
+local AutoLockEnabled = false
+local TriggerCheckEnabled = false
+local WallCheckEnabled = false
+local FakeHeadEnabled = false  -- NOVA: Mira em HumanoidRootPart com offset
 
------------------------------------------------------------
--- 🎯 FOV ESTÁTICO NO CENTRO DA TELA
------------------------------------------------------------
+local DebugEnabled = true
+local currentTarget = nil
+local CanShootTarget = false
+
+-- CONSTANTES PARA FAKE HEAD
+local HEAD_OFFSET = 2.5  -- Altura para simular cabeça a partir do torso
+local HEAD_OFFSET_UPPERTORSO = 1.5  -- Altura se UpperTorso for usado
+
+---------------------------------------------------------
+-- DEBUG SYSTEM
+---------------------------------------------------------
+local function debug(msg)
+    if DebugEnabled then
+        print("[DEBUG] " .. msg)
+    end
+end
+
+---------------------------------------------------------
+-- FOV CIRCLE
+---------------------------------------------------------
 local fovCircle = Drawing.new("Circle")
 fovCircle.Color = Color3.fromRGB(255, 255, 255)
 fovCircle.Thickness = 2
@@ -1820,25 +1838,25 @@ fovCircle.Radius = FOV
 fovCircle.Visible = AimFovEnabled
 
 local function update_fov_circle()
-    if AimFovEnabled then
-        local center = Camera.ViewportSize / 2
-        fovCircle.Position = Vector2.new(center.X, center.Y)
-        fovCircle.Radius = FOV
-    end
+    if not AimFovEnabled then return end
+    
+    local center = Camera.ViewportSize / 2
+    fovCircle.Position = Vector2.new(center.X, center.Y)
+    fovCircle.Radius = FOV
 end
 
------------------------------------------------------------
--- 🔎 ENCONTRA A MENOR PART (não BasePart, só Part)
------------------------------------------------------------
+
+
+
 local function findSmallestPart(character)
     local smallest = nil
-    local smallestSize = math.huge
+    local size = math.huge
 
     for _, part in ipairs(character:GetChildren()) do
         if part:IsA("Part") then
-            local size = part.Size.X * part.Size.Y * part.Size.Z
-            if size < smallestSize then
-                smallestSize = size
+            local volume = part.Size.X * part.Size.Y * part.Size.Z
+            if volume < size then
+                size = volume
                 smallest = part
             end
         end
@@ -1847,168 +1865,279 @@ local function findSmallestPart(character)
     return smallest
 end
 
------------------------------------------------------------
--- 🎯 OBTÉM A PARTE ALVO CORRETA
------------------------------------------------------------
+
+---------------------------------------------------------
+-- GET TARGET PART COM SISTEMA DE SELECTOR
+---------------------------------------------------------
 local function getTargetPart(character)
-    if aimTarget == "HumanoidRootPart" then
-        return character:FindFirstChild("HumanoidRootPart")
+    if not character then return nil end
+    
+    -- Sistema baseado no aimTarget selecionado
+    if aimTarget == "Head" then
+        local head = character:FindFirstChild("Head")
+        if head and head:IsA("BasePart") then
+            return head
+        end
+		return findSmallestPart(character)
+    elseif aimTarget == "HumanoidRootPart" then
+        local hrp = character:FindFirstChild("HumanoidRootPart")
+        if hrp and hrp:IsA("BasePart") then
+            return hrp
+        end
+    elseif aimTarget == "UpperTorso" then
+        local torso = character:FindFirstChild("UpperTorso")
+        if torso and torso:IsA("BasePart") then
+            return torso
+        end
+    elseif aimTarget == "LowerTorso" then
+        local ltorso = character:FindFirstChild("LowerTorso")
+        if ltorso and ltorso:IsA("BasePart") then
+            return ltorso
+        end
     end
-
-    local head = character:FindFirstChild("Head")
-    if head then
-        return head
+    
+    -- Fallback automático se o part especificado não existir
+    local partsOrder = {"Head", "HumanoidRootPart", "UpperTorso", "LowerTorso"}
+    for _, partName in ipairs(partsOrder) do
+        local part = character:FindFirstChild(partName)
+        if part and part:IsA("BasePart") then
+            debug("Fallback para: " .. partName)
+            return part
+        end
     end
-
-    -- fallback caso a head seja renomeada
-    return findSmallestPart(character)
+    
+    return nil
 end
 
------------------------------------------------------------
--- 🔦 SISTEMA DE WALL CHECK
------------------------------------------------------------
-local function wallCheck(origin, target)
-    if not WallCheckEnabled then
-        return true -- se wall check off, sempre permite
+---------------------------------------------------------
+-- GET AIM POSITION (COM FAKE HEAD SUPPORT)
+---------------------------------------------------------
+local function getAimPosition(targetPart)
+    if not targetPart then return nil end
+    
+    local basePosition = targetPart.Position
+    
+    -- Se FakeHead estiver ativado, ajusta a posição
+    if FakeHeadEnabled then
+        if targetPart.Name == "HumanoidRootPart" then
+            return basePosition + Vector3.new(0, HEAD_OFFSET, 0)
+        elseif targetPart.Name == "UpperTorso" then
+            return basePosition + Vector3.new(0, HEAD_OFFSET_UPPERTORSO, 0)
+        elseif targetPart.Name == "LowerTorso" then
+            return basePosition + Vector3.new(0, HEAD_OFFSET + 0.5, 0)
+        end
     end
+    
+    return basePosition
+end
 
+---------------------------------------------------------
+-- WALL CHECK
+---------------------------------------------------------
+local function wallCheck(origin, targetPos, targetCharacter)
+    if not WallCheckEnabled then return true end
+    if not player.Character or not targetCharacter then return false end
+    
+    local direction = (targetPos - origin).Unit
+    local distance = (targetPos - origin).Magnitude
+    
     local params = RaycastParams.new()
     params.FilterType = Enum.RaycastFilterType.Blacklist
-    params.FilterDescendantsInstances = {player.Character}
-
-    local result = Workspace:Raycast(origin, (target - origin).Unit * 5000, params)
-
-    if not result then
-        return true
+    params.FilterDescendantsInstances = {player.Character, targetCharacter}
+    params.IgnoreWater = true
+    
+    local result = Workspace:Raycast(origin, direction * distance, params)
+    
+    if result then
+        debug("Wall blocked: " .. result.Instance.Name)
+        return false
     end
-
-    -- só aceita se o hit for no próprio alvo
-    return result.Instance and result.Instance:IsDescendantOf(target.Parent)
+    
+    return true
 end
 
------------------------------------------------------------
--- 🎯 CHECA SE ESTÁ NO FOV CENTRAL
------------------------------------------------------------
+---------------------------------------------------------
+-- FOV CHECK (RESPEITA AimFovEnabled)
+---------------------------------------------------------
 local function is_within_fov(worldpos)
     if not AimFovEnabled then return false end
-
-    local screenPos, visible = Camera:WorldToViewportPoint(worldpos)
+    
+    local pos, visible = Camera:WorldToViewportPoint(worldpos)
     if not visible then return false end
-
-    local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
-    local dist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
-
+    
+    local center = Camera.ViewportSize / 2
+    local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(center.X, center.Y)).Magnitude
+    
     return dist <= FOV
 end
 
------------------------------------------------------------
--- 🔥 FUNÇÃO PRINCIPAL DO AIMBOT
------------------------------------------------------------
-local currentTarget = nil
+---------------------------------------------------------
+-- GET TARGET WITH VISIBILITY CHECK
+---------------------------------------------------------
+local function getVisibleTarget(targetPart, targetCharacter)
+    if not targetPart or not targetCharacter then return nil end
+    
+    local aimPosition = getAimPosition(targetPart)
+    
+    -- Verifica se está na tela
+    local pos, visible = Camera:WorldToViewportPoint(aimPosition)
+    if not visible then return nil end
+    
+    -- Verifica FOV
+    if not is_within_fov(aimPosition) then return nil end
+    
+    -- Verifica parede
+    if not wallCheck(Camera.CFrame.Position, aimPosition, targetCharacter) then
+        return nil
+    end
+    
+    return aimPosition
+end
 
+---------------------------------------------------------
+-- FIND CLOSEST TARGET
+---------------------------------------------------------
 local function getClosestTarget()
-    local char = player.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return nil end
-
-    local closest = nil
-    local closestDist = math.huge
-
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= player and plr.Character then
+    if not AimFovEnabled then return nil end
+    if not player.Character then return nil end
+    
+    local myChar = player.Character
+    local myHead = myChar:FindFirstChild("Head") or myChar:FindFirstChild("HumanoidRootPart")
+    if not myHead then return nil end
+    
+    local closestPart = nil
+    local closestDistance = math.huge
+    local bestAimPosition = nil
+    
+    for _, targetPlayer in ipairs(Players:GetPlayers()) do
+        if targetPlayer ~= player and targetPlayer.Character then
+            local targetChar = targetPlayer.Character
+            local targetHumanoid = targetChar:FindFirstChild("Humanoid")
             
-            local part = getTargetPart(plr.Character)
-            if part and is_within_fov(part.Position) then
-
-                if wallCheck(Camera.CFrame.Position, part.Position) then
-                    local dist = (part.Position - char.HumanoidRootPart.Position).Magnitude
-                    if dist < closestDist then
-                        closestDist = dist
-                        closest = part
+            -- Verifica se está vivo
+            if targetHumanoid and targetHumanoid.Health > 0 then
+                local targetPart = getTargetPart(targetChar)
+                
+                if targetPart then
+                    local aimPosition = getVisibleTarget(targetPart, targetChar)
+                    
+                    if aimPosition then
+                        local distance = (myHead.Position - aimPosition).Magnitude
+                        
+                        if distance < closestDistance then
+                            closestDistance = distance
+                            closestPart = targetPart
+                            bestAimPosition = aimPosition
+                        end
                     end
                 end
             end
         end
     end
-
-    return closest
+    
+    if closestPart and bestAimPosition then
+        debug("Target: " .. closestPart.Parent.Name .. " | Part: " .. closestPart.Name)
+    end
+    
+    return closestPart, bestAimPosition
 end
 
------------------------------------------------------------
--- 🎯 AIM SMOOTH + AUTOLOCK
------------------------------------------------------------
+---------------------------------------------------------
+-- AIMBOT CORE (RESPEITA AimFovEnabled)
+---------------------------------------------------------
 local function aim_at_target()
-    if not AimFovEnabled then return end
-
-    -- Se autolock estiver ligado, mira sempre
-    -- Se estiver off, mira apenas quando LMB estiver pressionado
+    -- Só roda se aimbot estiver habilitado
+    if not AimFovEnabled then 
+        currentTarget = nil
+        return 
+    end
+    
+    -- Só mira se autolock ativo ou mouse pressionado
     if not AutoLockEnabled and not aiming then
         currentTarget = nil
         return
     end
-
-    currentTarget = getClosestTarget()
-
-    if currentTarget then
-        local dir = (currentTarget.Position - Camera.CFrame.Position).Unit
-        Camera.CFrame = CFrame.new(
-            Camera.CFrame.Position,
-            Camera.CFrame.Position + Camera.CFrame.LookVector:Lerp(dir, smoothness)
-        )
-    end
-end
-
------------------------------------------------------------
--- 🔫 TRIGGER CHECK (SEM DISPARAR!)
------------------------------------------------------------
-local CanShootTarget = false -- variável pra você usar no seu sistema de tiro
-
-local function trigger_check()
-    if not TriggerCheckEnabled then
-        CanShootTarget = false
-        return
-    end
-
-    if currentTarget then
-        -- Já passou pelo wall check na seleção do alvo
-        CanShootTarget = true
+    
+    local targetPart, aimPosition = getClosestTarget()
+    
+    if targetPart and aimPosition then
+        currentTarget = targetPart
+        
+        -- Smooth aim
+        local currentCF = Camera.CFrame
+        local targetDir = (aimPosition - currentCF.Position).Unit
+        local lerpedDir = currentCF.LookVector:Lerp(targetDir, smoothness)
+        
+        -- Aplica apenas se a diferença for significativa
+        if (targetDir - currentCF.LookVector).Magnitude > 0.001 then
+            Camera.CFrame = CFrame.new(currentCF.Position, currentCF.Position + lerpedDir)
+        end
     else
-        CanShootTarget = false
+        currentTarget = nil
     end
 end
 
------------------------------------------------------------
--- 🖱 CONTROLE DO LMB (só ativa mira normal)
------------------------------------------------------------
+---------------------------------------------------------
+-- TRIGGERBOT (ATIRA QUANDO NOVO ALVO)
+---------------------------------------------------------
+local function trigger_check()
+    if not TriggerCheckEnabled or not currentTarget then return end
+    
+    local aimPosition = getAimPosition(currentTarget)
+    if not aimPosition then return end
+    
+    local pos, visible = Camera:WorldToViewportPoint(aimPosition)
+    if not visible then return end
+    
+    local center = Camera.ViewportSize / 2
+    local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(center.X, center.Y)).Magnitude
+    
+    -- Atira quando o alvo está no centro da tela
+    if dist < 5 then  -- Ajuste a sensibilidade conforme necessário
+        VirtualInput:SendMouseButtonEvent(center.X, center.Y, 0, true, game, 0)
+        task.wait(0.05)
+        VirtualInput:SendMouseButtonEvent(center.X, center.Y, 0, false, game, 0)
+        debug("Triggerbot fired at " .. currentTarget.Name)
+    end
+end
+
+---------------------------------------------------------
+-- INPUT HANDLERS
+---------------------------------------------------------
 UserInputService.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         aiming = true
+        debug("LMB pressed - Aiming active")
     end
 end)
 
 UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         aiming = false
+        debug("LMB released - Aiming inactive")
     end
 end)
 
------------------------------------------------------------
--- ON/OFF DO FOV
------------------------------------------------------------
+
 local function toggle_fov(state)
-    AimFovEnabled = state
-    fovCircle.Visible = state
+	AimFovEnabled = state
+	fovCircle.Visible = state
 end
 
------------------------------------------------------------
--- LOOP PRINCIPAL
------------------------------------------------------------
+
+---------------------------------------------------------
+-- MAIN LOOP
+---------------------------------------------------------
 RunService.RenderStepped:Connect(function()
     update_fov_circle()
     aim_at_target()
     trigger_check()
 end)
 
-print("Sistema completo carregado com AutoLock, TriggerCheck e WallCheck 🔥")
+debug("Aimbot inicializado com sucesso!")
+debug("Use LMB para mirar manualmente")
+debug("Aim Target: " .. aimTarget)
+
 
 
 
@@ -2072,6 +2201,11 @@ end)
 -- 🟢 Aim Fov
 Tab1:NewToggle("Auto Lock", false, function(val)
     AutoLockEnabled = val
+end)
+
+
+Tab1:NewToggle("Fake Head", false, function(val)
+    FakeHeadEnabled = val
 end)
 
 
@@ -2342,49 +2476,104 @@ Tab2:NewToggle("Fling / Kill", false, function(state)
 	end
 end)
 
--- 🧲 Puxar Jogador Selecionado
-Tab2:NewToggle("Puxar Selecionado", false, function(state)
-	if state and selectedPlayer then
-		_G.BringSelectedRunning = true
-		task.spawn(function()
-			while _G.BringSelectedRunning and selectedPlayer and selectedPlayer.Character do
-				local targetHRP = selectedPlayer.Character:FindFirstChild("HumanoidRootPart")
-				local myHRP = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-				if targetHRP and myHRP then
-					targetHRP.CFrame = myHRP.CFrame * CFrame.new(0, 0, -2)
-				end
-				task.wait()
-			end
-		end)
-	else
-		_G.BringSelectedRunning = false
+local bringDistance = 7
+local centerDistance = 6
+
+local RMB = false
+
+UserInputService.InputBegan:Connect(function(i)
+	if i.UserInputType == Enum.UserInputType.MouseButton2 then
+		RMB = true
 	end
 end)
 
--- 🌪️ Puxar Todos
-Tab2:NewToggle("Puxar Todos", false, function(state)
+UserInputService.InputEnded:Connect(function(i)
+	if i.UserInputType == Enum.UserInputType.MouseButton2 then
+		RMB = false
+	end
+end)
+
+local function getHead(char)
+	local head = char:FindFirstChild("Head")
+	if head and head:IsA("BasePart") then
+		return head
+	end
+	for _, c in ipairs(char:GetDescendants()) do
+		if c:IsA("MeshPart") and c.Name:lower():find("head") then
+			return c
+		end
+	end
+	return nil
+end
+
+local function bringToCenter(targetChar)
+	local head = getHead(targetChar)
+	if not head then return end
+
+	local cam = Camera.CFrame
+	local centerPos = cam.Position + cam.LookVector * centerDistance
+
+	local headOffset = head.Position - targetChar:FindFirstChild("HumanoidRootPart").Position
+	local newHRPpos = centerPos - headOffset
+
+	local hrp = targetChar:FindFirstChild("HumanoidRootPart")
+	hrp.CFrame = CFrame.lookAt(newHRPpos, cam.Position + cam.LookVector)
+end
+
+local function bringNormal(targetChar)
+	local hrp = targetChar:FindFirstChild("HumanoidRootPart")
+	local myHRP = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	if not hrp or not myHRP then return end
+
+	local pos = myHRP.Position + myHRP.CFrame.LookVector * bringDistance
+	hrp.CFrame = CFrame.lookAt(pos, myHRP.Position + myHRP.CFrame.LookVector)
+end
+
+local function bringLogic(char)
+	if RMB then
+		bringToCenter(char)
+	else
+		bringNormal(char)
+	end
+end
+
+Tab2:NewToggle("Puxar Selecionado", false, function(state)
+	_G.BringSelectedRunning = state
 	if state then
-		_G.BringAllRunning = true
+		task.spawn(function()
+			while _G.BringSelectedRunning and selectedPlayer and selectedPlayer.Character do
+				bringLogic(selectedPlayer.Character)
+				task.wait()
+			end
+		end)
+	end
+end)
+
+Tab2:NewToggle("Puxar Todos", false, function(state)
+	_G.BringAllRunning = state
+	if state then
 		task.spawn(function()
 			while _G.BringAllRunning do
-				local myHRP = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-				if myHRP then
+				local myChar = player.Character
+				if myChar then
 					for _, plr in ipairs(Players:GetPlayers()) do
 						if plr ~= player and plr.Character then
-							local targetHRP = plr.Character:FindFirstChild("HumanoidRootPart")
-							if targetHRP then
-								targetHRP.CFrame = myHRP.CFrame * CFrame.new(0, 0, -2)
-							end
+							bringLogic(plr.Character)
 						end
 					end
 				end
 				task.wait()
 			end
 		end)
-	else
-		_G.BringAllRunning = false
 	end
 end)
+
+
+
+
+
+
+
 
 ----------------------------------------------------------
 -- 🚶‍♂️ Seguir Jogador (Loop TP)
@@ -2781,8 +2970,6 @@ end)
 
 
 
-
-local Camera = workspace.CurrentCamera
 
 local cameraPos = Vector3.new()
 local cameraRot = Vector2.new()
