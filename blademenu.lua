@@ -9,6 +9,7 @@ local char = player.Character
 local root = char and char:FindFirstChild("HumanoidRootPart")
 local humanoid = char and char:FindFirstChildOfClass("Humanoid")
 local Humanoid = char and char:FindFirstChildOfClass("Humanoid")
+local TextChatService = game:GetService("TextChatService")
 
 local flingActive = false
 local oldPos = nil
@@ -17,10 +18,10 @@ local restoreCollide = nil
 local CurrentTarget = nil
 
 -- Função de estabilização original
-local function stabilizeCharacter(Character, RootPart, Humanoid)
+local function stabilizeCharacter(Character, RootPart, humanoid)
     RootPart.CFrame = oldPos * CFrame.new(0, .5, 0)
     Character:SetPrimaryPartCFrame(oldPos * CFrame.new(0, .5, 0))
-    Humanoid:ChangeState("GettingUp")
+    humanoid:ChangeState("GettingUp")
     for _, bp in pairs(Character:GetChildren()) do
         if bp:IsA("BasePart") then
             bp.Velocity = Vector3.new()
@@ -134,7 +135,6 @@ local function SkidFling(TargetPlayer)
         return warn("Fling: Seu personagem não está pronto")
     end
 
-    local Humanoid = Character:FindFirstChildOfClass("Humanoid")
     local RootPart = Character:FindFirstChild("HumanoidRootPart")
     local THumanoid = TCharacter:FindFirstChildOfClass("Humanoid")
     local TRootPart = TCharacter:FindFirstChild("HumanoidRootPart")
@@ -168,7 +168,7 @@ local function SkidFling(TargetPlayer)
     local function SFBasePart(BasePart)
         local Angle = 0
         flingActive = true
-        while flingActive and RootPart and BasePart and TargetPlayer.Character == TCharacter and THumanoid and Humanoid and Humanoid.Health > 0 do
+        while flingActive and RootPart and BasePart and TargetPlayer.Character == TCharacter and THumanoid and humanoid and humanoid.Health > 0 do
             Angle += 150
             local vel = BasePart.Velocity.Magnitude * 1.5
 
@@ -191,7 +191,7 @@ local function SkidFling(TargetPlayer)
     BV.P = 1e6
     BV.Parent = RootPart
 
-    Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+    humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
 
     if TRootPart and THead then
         if (TRootPart.Position - THead.Position).Magnitude > 5 then
@@ -208,13 +208,13 @@ local function SkidFling(TargetPlayer)
     end
 
     BV:Destroy()
-    Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+    humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
 
     if oldPos then
-        stabilizeCharacter(Character, RootPart, Humanoid)
+        stabilizeCharacter(Character, RootPart, humanoid)
     end
 
-    workspace.CurrentCamera.CameraSubject = Humanoid
+    workspace.CurrentCamera.CameraSubject = humanoid
 
     if antiCollideConn then
         antiCollideConn:Disconnect()
@@ -239,8 +239,8 @@ end
 -- local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Consistt/Ui/main/UnLeaked"))()
 local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/KALIangg/Roblox-UI-Libs/refs/heads/main/xsx%20Lib/xsx%20Lib%20Source.lua"))()
 
-library.rank = "Premium"
-local Wm = library:Watermark("Poze MENU | v" .. library.version ..  " | " .. library:GetUsername() .. " | rank: " .. library.rank)
+library.rank = game.Players.LocalPlayer.Name
+local Wm = library:Watermark("Blade MENU | v" .. library.version ..  " | " .. library:GetUsername() .. " | User: " .. library.rank)
 local FpsWm = Wm:AddWatermark("fps: " .. library.fps)
 coroutine.wrap(function()
     while wait(.75) do
@@ -251,23 +251,21 @@ end)()
 
 local Notif = library:InitNotifications()
 
+
 for i = 10,0,-1 do 
     task.wait(0.05)
-    local LoadingXSX = Notif:Notify("Poze MENU - Carregando...", 3, "information") -- notification, alert, error, success, information
+    local LoadingXSX = Notif:Notify("Blade MENU - Carregando...", 3, "information") -- notification, alert, error, success, information
 end 
-library.title = "Poze MENU | ANTI-RP | TESTING | v2.1.250"
-library:Introduction()
-wait(1)
 
-
+library.title = "BLADE MENU"
 
 local Init = library:Init()
 
 local Tab1 = Init:NewTab("PvP")
 local Tab2 = Init:NewTab("Online")
-local Tab3 = Init:NewTab("Player")
-local Tab4 = Init:NewTab("Armas")
-local Tab5 = Init:NewTab("Admin")
+local Tab3 = Init:NewTab("LocalPlayer")
+local Tab4 = Init:NewTab("Weapons")
+local Tab5 = Init:NewTab("Triggers")
 
 
 
@@ -307,7 +305,7 @@ local function isPlayerInFreecam(plr)
 end
 
 
-local AdminToggle = Tab3:NewToggle("Admin Logger", false, function(val)
+Tab3:NewToggle("Admin Logger", false, function(val)
 	MonitorExploits = val
     if val then
         local FinishedLoading = Notif:Notify("Monitoramento de exploits ativado!", 4, "success")
@@ -317,9 +315,11 @@ local AdminToggle = Tab3:NewToggle("Admin Logger", false, function(val)
 end)
 
 
+
+
+
 -- ===== Admin Core =====
 local AdminEnabled = false
-local TextChatService = game:GetService("TextChatService")
 local StarterGui = game:GetService("StarterGui")
 local TeleportService = game:GetService("TeleportService")
 
@@ -835,7 +835,6 @@ RegisterCommand("pt", function()
     tool.RequiresHandle = false
     tool.Name = "TP Tool"
     tool.Activated:Connect(function()
-        local mouse = LocalPlayer:GetMouse()
         if mouse and mouse.Hit then
             local char = LocalPlayer.Character
             if char and char:FindFirstChild("HumanoidRootPart") then
@@ -1809,13 +1808,14 @@ local AutoLockEnabled = false
 local TriggerCheckEnabled = false
 local WallCheckEnabled = false
 local FakeHeadEnabled = false  -- NOVA: Mira em HumanoidRootPart com offset
+local WallHitEnabled = false
 
 local DebugEnabled = true
 local currentTarget = nil
 local CanShootTarget = false
 
 -- CONSTANTES PARA FAKE HEAD
-local HEAD_OFFSET = 2.5  -- Altura para simular cabeça a partir do torso
+local HEAD_OFFSET = 2.2  -- Altura para simular cabeça a partir do torso
 local HEAD_OFFSET_UPPERTORSO = 1.5  -- Altura se UpperTorso for usado
 
 ---------------------------------------------------------
@@ -1955,6 +1955,72 @@ local function wallCheck(origin, targetPos, targetCharacter)
     
     return true
 end
+
+---------------------------------------------------------
+-- WALL HIT SYSTEM
+---------------------------------------------------------
+
+--// WALLHIT SYSTEM (Modo B: Transparência + NoCollide)
+
+
+local hiddenObjects = {} -- guarda objetos escondidos
+
+-- Marca e esconde o objeto
+local function hideObject_B(obj)
+    if hiddenObjects[obj] then return end
+
+    hiddenObjects[obj] = {
+        Transparency = obj.Transparency,
+        CanCollide = obj.CanCollide
+    }
+
+    -- Torna invisível e sem colisão
+    obj.Transparency = 1
+    obj.CanCollide = false
+end
+
+-- Restaura o objeto ao estado original
+local function restoreObject_B(obj)
+    local data = hiddenObjects[obj]
+    if not data then return end
+
+    obj.Transparency = data.Transparency
+    obj.CanCollide = data.CanCollide
+
+    hiddenObjects[obj] = nil
+end
+
+-- Limpa tudo que não está mais na mira
+local function cleanupHiddenObjects_B(currentHit)
+    for obj, _ in pairs(hiddenObjects) do
+        if obj ~= currentHit then
+            restoreObject_B(obj)
+        end
+    end
+end
+
+-- Checa o que está na mira e aplica WallHit
+local function wallHitUpdate_B()
+    if not WallHitEnabled then return end
+
+    local origin = Camera.CFrame.Position
+    local direction = Camera.CFrame.LookVector * 5000
+
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Blacklist
+    params.FilterDescendantsInstances = {player.Character}
+
+    local result = Workspace:Raycast(origin, direction, params)
+
+    if result and result.Instance then
+        local obj = result.Instance
+        hideObject_B(obj)
+        cleanupHiddenObjects_B(obj)
+    else
+        cleanupHiddenObjects_B(nil)
+    end
+end
+
 
 ---------------------------------------------------------
 -- FOV CHECK (RESPEITA AimFovEnabled)
@@ -2132,6 +2198,7 @@ RunService.RenderStepped:Connect(function()
     update_fov_circle()
     aim_at_target()
     trigger_check()
+	wallHitUpdate_B()
 end)
 
 debug("Aimbot inicializado com sucesso!")
@@ -2220,7 +2287,9 @@ Tab1:NewToggle("Wall Check", false, function(val)
     WallCheckEnabled = val
 end)
 
-
+Tab1:NewToggle("Wall Hit", false, function(val)
+    WallHitEnabled = val
+end)
 
 
 -- 🟢 Aim Fov
@@ -2391,7 +2460,7 @@ local function startBang(mode, targetName)
 	humanoid.AutoRotate = false
 
 	bangAnim = Instance.new("Animation")
-	bangAnim.AnimationId = r15(LocalPlayer) and "rbxassetid://82070755455634" or "rbxassetid://82070755455634"
+	bangAnim.AnimationId = r15(LocalPlayer) and "rbxassetid://129714976763545" or "rbxassetid://129714976763545"
 	bang = humanoid:LoadAnimation(bangAnim)
 	bang.Looped = true
 	bang:Play(0.1, 1, 1)
@@ -2633,7 +2702,6 @@ end
 
 
 local TweenService = game:GetService("TweenService")
-local Camera = workspace.CurrentCamera
 
 local FLYING = false
 local QEfly = true
@@ -3404,7 +3472,7 @@ end)
 
 
 local emoteid = nil
-local EmoteId = Tab3:NewTextbox("Insira o id...", "", "1", "all", "small", true, false, function(val)
+Tab3:NewTextbox("Insira o id...", "", "1", "all", "small", true, false, function(val)
     emoteid = val
 end)
 
@@ -3466,7 +3534,6 @@ Tab3:NewToggle("TP Tool", false, function(state)
 
         -- Clique para teleportar
         tool.Activated:Connect(function()
-            local mouse = Players.LocalPlayer:GetMouse()
             if mouse and mouse.Hit then
                 local char = Players.LocalPlayer.Character
                 if char and char:FindFirstChild("HumanoidRootPart") then
@@ -3661,53 +3728,7 @@ end)
 
 
 
------------------------------------------
--- MOBILE SYSTEM INTEGRATION 📱
------------------------------------------
 
-local MobileOpen
-
-local function createMobileIcon()
-    if MobileOpen then
-        MobileOpen:Destroy()
-    end
-
-
-    local gui2 = Instance.new("ScreenGui")
-    gui2.Name = "OpenMobile"
-    gui2.ResetOnSpawn = false
-    gui2.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    gui2.Parent = LocalPlayer:WaitForChild("PlayerGui")
-
-    local open = Instance.new("ImageButton")
-    open.Name = "MobileOpen"
-    open.Size = UDim2.new(0, 50, 0, 50)
-    open.Position = UDim2.new(0, 10, 0, 5)
-    open.BackgroundTransparency = 0
-    open.Image = "rbxassetid://76977741215928"
-    open.ImageTransparency = 0
-    open.AutoButtonColor = true
-    open.Parent = gui2
-
-    local openCorner = Instance.new("UICorner")
-    openCorner.CornerRadius = UDim.new(0.9)
-    openCorner.Parent = open
-
-
-    open.MouseButton1Down:Connect(function()
-        local VirtualInputManager = game:GetService("VirtualInputManager")
-
-        -- Simula o pressionar e soltar da tecla "G"
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.RightAlt, false, game)
-        task.wait(0.1)
-        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.RightAlt, false, game)
-    end)
-
-    MobileOpen = gui2
-end
-
-
-createMobileIcon()
 
 ----------------------------------------------------------
 -- ✅ NOTIFICAÇÃO FINAL
